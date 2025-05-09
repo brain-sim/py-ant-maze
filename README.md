@@ -18,6 +18,32 @@ cd py-ant-maze
 pip install -e .
 ```
 
+Or, for using in Isaac. Run the following in Window->Script Editor:
+
+```Python
+import os
+from pathlib import Path
+import omni.kit.pipapi
+
+def install_local_package(package_path):
+    package_path = Path(package_path).resolve()
+    if not package_path.exists():
+        print(f"Package path does not exist: {package_path}")
+        return
+
+    print(f"Installing local package from: {package_path}")
+    result = omni.kit.pipapi.call_pip(["install", str(package_path)])
+
+    if result == 0:
+        print("Package installed successfully!")
+    else:
+        print(f"pip install failed with exit code {result}")
+
+if __name__ == "__main__":
+    # Replace with the path to your local package
+    install_local_package("/path/to/py-ant-maze")
+```
+
 ## Features
 
 - Create customizable maze environments
