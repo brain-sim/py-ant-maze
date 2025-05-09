@@ -18,9 +18,6 @@ class TestAntMazeConfig(unittest.TestCase):
         self.assertEqual(self.config.wall_width, 0.1)
         self.assertEqual(self.config.cell_size, 1.0)
         self.assertEqual(self.config.ant_scale, 0.8)
-        self.assertEqual(self.config.goal_threshold, 0.5)
-        self.assertEqual(self.config.max_episode_steps, 500)
-        self.assertEqual(self.config.reward_type, "sparse")
         self.assertEqual(self.config.custom_settings, {})
         
         # Check default colors
@@ -39,9 +36,6 @@ class TestAntMazeConfig(unittest.TestCase):
             cell_size=1.2,
             ant_scale=0.7,
             render_walls=False,
-            goal_threshold=0.4,
-            max_episode_steps=1000,
-            reward_type="dense",
             custom_settings={"custom_param": 123}
         )
         
@@ -50,9 +44,6 @@ class TestAntMazeConfig(unittest.TestCase):
         self.assertEqual(custom_config.cell_size, 1.2)
         self.assertEqual(custom_config.ant_scale, 0.7)
         self.assertEqual(custom_config.render_walls, False)
-        self.assertEqual(custom_config.goal_threshold, 0.4)
-        self.assertEqual(custom_config.max_episode_steps, 1000)
-        self.assertEqual(custom_config.reward_type, "dense")
         self.assertEqual(custom_config.custom_settings, {"custom_param": 123})
     
     def test_set_color(self):
@@ -81,9 +72,6 @@ class TestAntMazeConfig(unittest.TestCase):
         self.assertIn('cell_size', config_dict)
         self.assertIn('ant_scale', config_dict)
         self.assertIn('render_walls', config_dict)
-        self.assertIn('goal_threshold', config_dict)
-        self.assertIn('max_episode_steps', config_dict)
-        self.assertIn('reward_type', config_dict)
         self.assertIn('colors', config_dict)
     
     def test_from_dict(self):

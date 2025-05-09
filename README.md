@@ -1,6 +1,6 @@
 # py-ant-maze
 
-A Python package for creating and manipulating reinforcement learning environments for ant maze navigation tasks.
+A Python package for creating and managing ant maze environments.
 
 ## Installation
 
@@ -20,10 +20,10 @@ pip install -e .
 
 ## Features
 
-- Create customizable maze environments for reinforcement learning
+- Create customizable maze environments
 - Load and save maze configurations from/to text files
-- Configure physical properties for simulation environments
-- Easily integrate with common RL frameworks
+- Configure physical properties and visualization settings
+- Visualize mazes with customizable colors and styles
 
 ## Basic Usage
 
@@ -62,7 +62,7 @@ new_maze.build_from_txt("custom_maze.txt")
 
 ## Customizing the Maze Configuration
 
-You can customize the physical properties and rendering settings:
+You can customize the physical properties and visualization settings:
 
 ```python
 from py_ant_maze import bsAntMazeConfig
@@ -72,9 +72,7 @@ config = bsAntMazeConfig(
     wall_height=0.8,
     wall_width=0.15,
     cell_size=1.2,
-    ant_scale=0.7,
-    goal_threshold=0.4,
-    reward_type="dense"
+    ant_scale=0.7
 )
 
 # Change colors for visualization

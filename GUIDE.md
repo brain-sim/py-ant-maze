@@ -1,6 +1,6 @@
 # py-ant-maze: Comprehensive Guide
 
-This guide provides comprehensive information on using the `py-ant-maze` package for reinforcement learning environments with maze navigation tasks.
+This guide provides comprehensive information on using the `py-ant-maze` package for creating and managing maze environments.
 
 ## Table of Contents
 
@@ -9,8 +9,7 @@ This guide provides comprehensive information on using the `py-ant-maze` package
 3. [Maze Creation](#maze-creation)
 4. [Configuration](#configuration)
 5. [Examples](#examples)
-6. [Integration with RL Frameworks](#integration-with-rl-frameworks)
-7. [Development and Contribution](#development-and-contribution)
+6. [Development and Contribution](#development-and-contribution)
 
 ## Installation
 
@@ -106,9 +105,6 @@ config = bsAntMazeConfig(
     cell_size=1.2,          # Size of each cell in the maze
     ant_scale=0.7,          # Scale factor for the ant agent
     render_walls=True,      # Whether to render walls in visualization
-    goal_threshold=0.5,     # Distance threshold to consider goal reached
-    max_episode_steps=500,  # Maximum number of steps per episode
-    reward_type="sparse",   # Type of reward ('sparse', 'dense', or 'custom')
     custom_settings={}      # Additional custom configuration settings
 )
 
@@ -121,12 +117,10 @@ maze = bsAntMaze(config)
 ```python
 # Update individual settings
 config.wall_height = 1.0
-config.max_episode_steps = 1000
 
 # Update multiple settings at once
 config.update({
     'wall_height': 0.8,
-    'goal_threshold': 0.4,
     'custom_param': 123
 })
 ```
@@ -153,66 +147,6 @@ See `examples/basic_usage.py` for a simple demonstration of creating and manipul
 ### Maze Visualization
 
 See `examples/maze_visualization.py` for an example of visualizing the maze using matplotlib.
-
-### Random Agent
-
-See `examples/random_agent.py` for an implementation of a simple random agent navigating the maze.
-
-## Integration with RL Frameworks
-
-The `py-ant-maze` package is designed to be easily integrated with common reinforcement learning frameworks. Here's a basic example of how to use it with a generic RL framework:
-
-```python
-from py_ant_maze import bsAntMaze
-
-class AntMazeEnv:
-    def __init__(self):
-        self.maze = bsAntMaze()
-        self.reset()
-    
-    def reset(self):
-        self.position = self.maze.get_start_position()
-        self.done = False
-        self.steps = 0
-        return self._get_observation()
-    
-    def step(self, action):
-        # Define actions: 0=up, 1=right, 2=down, 3=left
-        directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
-        dr, dc = directions[action]
-        
-        # Calculate new position
-        new_r, new_c = self.position[0] + dr, self.position[1] + dc
-        maze_array = self.maze.get_maze()
-        
-        # Check if valid move
-        if (0 <= new_r < maze_array.shape[0] and 
-            0 <= new_c < maze_array.shape[1] and 
-            maze_array[new_r, new_c] == 0):
-            self.position = (new_r, new_c)
-        
-        # Check if goal reached
-        goal_reached = self.position == self.maze.get_goal_position()
-        
-        # Increment steps and check termination
-        self.steps += 1
-        max_steps = self.maze.get_config().max_episode_steps
-        timeout = self.steps >= max_steps
-        
-        # Set done flag and calculate reward
-        self.done = goal_reached or timeout
-        reward = 1.0 if goal_reached else 0.0  # Sparse reward
-        
-        return self._get_observation(), reward, self.done, {'goal_reached': goal_reached}
-    
-    def _get_observation(self):
-        # Create a simple observation (position relative to goal)
-        goal = self.maze.get_goal_position()
-        return (
-            self.position[0] - goal[0],
-            self.position[1] - goal[1]
-        )
-```
 
 ## Development and Contribution
 
@@ -248,6 +182,4 @@ ruff check .
 pip install -e ".[docs]"
 
 # Build documentation
-cd docs
-make html
 ```
