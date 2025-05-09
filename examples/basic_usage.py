@@ -54,9 +54,7 @@ def main():
         wall_height=0.8,
         wall_width=0.15,
         cell_size=1.2,
-        ant_scale=0.7,
-        goal_threshold=0.4,
-        reward_type="dense"
+        ant_scale=0.7
     )
     
     # Change colors for visualization

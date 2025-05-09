@@ -1,7 +1,8 @@
 """
-AntMaze environment for reinforcement learning navigation tasks.
+AntMaze environment builder for creating and managing maze layouts.
 
-This module provides a configurable ant maze environment for RL research.
+This module provides a configurable ant maze environment builder for creating
+and managing maze layouts with walls, start positions, and goal positions.
 """
 import numpy as np
 import os
@@ -12,7 +13,7 @@ from .ant_maze_config import bsAntMazeConfig
 
 class bsAntMaze:
     """
-    Ant Maze environment for reinforcement learning.
+    Ant Maze environment builder.
     
     The environment represents a maze where:
     - 0: represents free space (where the ant can move)
@@ -30,7 +31,7 @@ class bsAntMaze:
     
     def __init__(self, maze_config: Optional[bsAntMazeConfig] = None):
         """
-        Initialize the Ant Maze environment.
+        Initialize the Ant Maze environment builder.
         
         Args:
             maze_config: Configuration object for the maze. If None, default config is used.

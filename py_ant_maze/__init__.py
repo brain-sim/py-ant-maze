@@ -1,8 +1,8 @@
 """
-py-ant-maze: A package for ant maze navigation in reinforcement learning.
+py-ant-maze: A package for building and managing ant maze environments.
 
-This package provides tools for creating and manipulating maze environments
-for ant navigation tasks in reinforcement learning research.
+This package provides tools for creating, manipulating, and visualizing
+maze environments for ant navigation tasks.
 """
 
 from .ant_maze import bsAntMaze

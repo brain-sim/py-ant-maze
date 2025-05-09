@@ -8,7 +8,7 @@ setup(
     version="0.1.0",
     author="Yihao Liu",
     author_email="yihao.jhu@gmail.com",
-    description="A reinforcement learning environment for ant maze navigation",
+    description="A package for building and managing ant maze environments",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/brain-sim/py-ant-maze",

@@ -2,7 +2,7 @@
 Configuration for the AntMaze environment.
 
 This module provides configuration settings for the AntMaze environment
-including physical properties and rendering settings.
+including physical properties and visualization settings.
 """
 from typing import Dict, Any, Tuple, Optional, List
 
@@ -12,8 +12,7 @@ class bsAntMazeConfig:
     Configuration class for the AntMaze environment.
     
     This class stores the configuration parameters for the maze environment,
-    including wall dimensions, rendering settings, and physical properties
-    for simulation environments.
+    including wall dimensions and visualization settings.
     """
     
     def __init__(self, 
@@ -22,9 +21,6 @@ class bsAntMazeConfig:
                  cell_size: float = 1.0,
                  ant_scale: float = 0.8,
                  render_walls: bool = True,
-                 goal_threshold: float = 0.5,
-                 max_episode_steps: int = 500,
-                 reward_type: str = "sparse",
                  custom_settings: Optional[Dict[str, Any]] = None):
         """
         Initialize the Ant Maze configuration.
@@ -35,9 +31,6 @@ class bsAntMazeConfig:
             cell_size: Size of each cell in the maze
             ant_scale: Scale factor for the ant agent
             render_walls: Whether to render the walls in visualization
-            goal_threshold: Distance threshold to consider goal reached
-            max_episode_steps: Maximum number of steps per episode
-            reward_type: Type of reward ('sparse', 'dense', or 'custom')
             custom_settings: Additional custom configuration settings
         """
         # Wall and maze physical properties
@@ -50,11 +43,6 @@ class bsAntMazeConfig:
         
         # Rendering settings
         self.render_walls = render_walls
-        
-        # RL task settings
-        self.goal_threshold = goal_threshold
-        self.max_episode_steps = max_episode_steps
-        self.reward_type = reward_type
         
         # Store any additional custom settings
         self.custom_settings = custom_settings or {}
@@ -81,9 +69,6 @@ class bsAntMazeConfig:
             'cell_size': self.cell_size,
             'ant_scale': self.ant_scale,
             'render_walls': self.render_walls,
-            'goal_threshold': self.goal_threshold,
-            'max_episode_steps': self.max_episode_steps,
-            'reward_type': self.reward_type,
             'colors': self.colors,
             **self.custom_settings
         }
@@ -106,9 +91,6 @@ class bsAntMazeConfig:
         cell_size = config_dict.get('cell_size', 1.0)
         ant_scale = config_dict.get('ant_scale', 0.8)
         render_walls = config_dict.get('render_walls', True)
-        goal_threshold = config_dict.get('goal_threshold', 0.5)
-        max_episode_steps = config_dict.get('max_episode_steps', 500)
-        reward_type = config_dict.get('reward_type', 'sparse')
         
         # Create a new config object
         config = cls(
@@ -116,10 +98,7 @@ class bsAntMazeConfig:
             wall_width=wall_width,
             cell_size=cell_size,
             ant_scale=ant_scale,
-            render_walls=render_walls,
-            goal_threshold=goal_threshold,
-            max_episode_steps=max_episode_steps,
-            reward_type=reward_type
+            render_walls=render_walls
         )
         
         # Add colors if present
@@ -129,8 +108,7 @@ class bsAntMazeConfig:
         # Add any remaining custom settings
         custom_keys = set(config_dict.keys()) - {
             'wall_height', 'wall_width', 'cell_size', 'ant_scale',
-            'render_walls', 'goal_threshold', 'max_episode_steps',
-            'reward_type', 'colors'
+            'render_walls', 'colors'
         }
         
         for key in custom_keys:
