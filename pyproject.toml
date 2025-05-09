@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "py-ant-maze"
-version = "0.0.1"
+version = "0.1.0"
 description = "A package for building and managing ant maze environments"
 readme = "README.md"
 authors = [
@@ -21,6 +21,7 @@ classifiers = [
 keywords = ["maze", "navigation", "ant", "environment", "visualization"]
 dependencies = [
     "numpy>=1.19.0",
+    "matplotlib>=3.3.0",
 ]
 requires-python = ">=3.7"
 
@@ -44,4 +45,4 @@ ignore = []
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = "test_*.py"
+python_files = "test_*.py" 

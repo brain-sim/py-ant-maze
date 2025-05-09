@@ -37,7 +37,7 @@ class bsAntMaze:
             maze_config: Configuration object for the maze. If None, default config is used.
         """
         self._maze_txt = None
-        self._maze_config = maze_config if maze_config else bsAntMazeConfig()
+        self._config = maze_config if maze_config else bsAntMazeConfig()
         self._maze = None
         self._start_pos = None
         self._goal_pos = None
@@ -249,7 +249,7 @@ class bsAntMaze:
         Returns:
             bsAntMazeConfig: Configuration object for the maze
         """
-        return self._maze_config
+        return self._config
     
     def set_config(self, maze_config: bsAntMazeConfig) -> None:
         """
@@ -258,4 +258,4 @@ class bsAntMaze:
         Args:
             maze_config: New configuration object for the maze
         """
-        self._maze_config = maze_config
+        self._config = maze_config
