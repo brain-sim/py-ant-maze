@@ -7,7 +7,7 @@ using matplotlib for a simple 2D representation.
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from py_ant_maze import bsAntMaze, bsAntMazeConfig
+from py_ant_maze import bsAntMaze, bsAntMazeConfig, bsAntMazeDimensions, bsAntMazeVisuals
 
 
 def visualize_maze(maze, start_pos, goal_pos, config):
@@ -24,7 +24,7 @@ def visualize_maze(maze, start_pos, goal_pos, config):
     fig, ax = plt.subplots(figsize=(8, 8))
     
     # Get colors from config
-    colors = config.colors
+    colors = config.visuals.colors
     wall_color = colors['wall']
     floor_color = colors['floor']
     start_color = colors['start']
@@ -96,18 +96,24 @@ def main():
     maze.set_start_position((1, 1))
     maze.set_goal_position((5, 7))
     
-    # Create custom configuration with different colors
-    config = bsAntMazeConfig(
+    # Create custom dimensions
+    dimensions = bsAntMazeDimensions(
         wall_height=0.8,
-        wall_width=0.15,
-        cell_size=1.2
+        cell_size=1.2  # This also determines the wall width
     )
     
-    # Customize colors
-    config.set_color('wall', (0.5, 0.5, 0.7))    # Bluish walls
-    config.set_color('floor', (0.95, 0.95, 0.9))  # Light cream floor
-    config.set_color('start', (1.0, 0.3, 0.3))    # Brighter red start
-    config.set_color('goal', (0.2, 0.8, 0.2))     # Brighter green goal
+    # Create custom visuals with different colors
+    visuals = bsAntMazeVisuals()
+    visuals.set_color('wall', (0.5, 0.5, 0.7))    # Bluish walls
+    visuals.set_color('floor', (0.95, 0.95, 0.9))  # Light cream floor
+    visuals.set_color('start', (1.0, 0.3, 0.3))    # Brighter red start
+    visuals.set_color('goal', (0.2, 0.8, 0.2))     # Brighter green goal
+    
+    # Create config with custom dimensions and visuals
+    config = bsAntMazeConfig(
+        dimensions=dimensions,
+        visuals=visuals
+    )
     
     # Visualize the maze
     fig, ax = visualize_maze(

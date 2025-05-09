@@ -7,46 +7,78 @@ including physical properties and visualization settings.
 from typing import Dict, Any, Tuple, Optional, List
 
 
-class bsAntMazeConfig:
+class bsAntMazeDimensions:
     """
-    Configuration class for the AntMaze environment.
+    Physical dimensions configuration for the maze environment.
     
-    This class stores the configuration parameters for the maze environment,
-    including wall dimensions and visualization settings.
+    This class stores the physical dimensions and properties of the maze
+    that would be relevant for visualization or simulation.
+    
+    Note: The wall width is always equal to the cell size, as the maze
+    is generated using a grid of squares. Only the wall height can be
+    configured independently.
     """
     
     def __init__(self, 
                  wall_height: float = 0.5,
-                 wall_width: float = 0.1,
                  cell_size: float = 1.0,
-                 ant_scale: float = 0.8,
-                 render_walls: bool = True,
-                 custom_settings: Optional[Dict[str, Any]] = None):
+                 ant_scale: float = 0.8):
         """
-        Initialize the Ant Maze configuration.
+        Initialize the maze dimensions configuration.
         
         Args:
             wall_height: Height of maze walls
-            wall_width: Width/thickness of maze walls
-            cell_size: Size of each cell in the maze
+            cell_size: Size of each cell in the maze (also determines wall width)
             ant_scale: Scale factor for the ant agent
-            render_walls: Whether to render the walls in visualization
-            custom_settings: Additional custom configuration settings
         """
-        # Wall and maze physical properties
         self.wall_height = wall_height
-        self.wall_width = wall_width
         self.cell_size = cell_size
-        
-        # Agent properties
         self.ant_scale = ant_scale
         
-        # Rendering settings
-        self.render_walls = render_walls
+        # Wall width is always equal to cell size
+        self.wall_width = cell_size
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert dimensions to a dictionary.
         
-        # Store any additional custom settings
-        self.custom_settings = custom_settings or {}
+        Returns:
+            dict: Dictionary representation of the dimensions
+        """
+        return {
+            'wall_height': self.wall_height,
+            'cell_size': self.cell_size,
+            'ant_scale': self.ant_scale
+        }
+    
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> 'bsAntMazeDimensions':
+        """
+        Create a dimensions object from a dictionary.
         
+        Args:
+            config_dict: Dictionary containing dimension values
+            
+        Returns:
+            bsAntMazeDimensions: New dimensions object
+        """
+        return cls(
+            wall_height=config_dict.get('wall_height', 0.5),
+            cell_size=config_dict.get('cell_size', 1.0),
+            ant_scale=config_dict.get('ant_scale', 0.8)
+        )
+
+
+class bsAntMazeVisuals:
+    """
+    Visualization configuration for the maze environment.
+    
+    This class stores visualization settings like colors for different
+    maze elements.
+    """
+    
+    def __init__(self):
+        """Initialize the visualization configuration."""
         # Color settings for visualization (RGB format)
         self.colors = {
             'wall': (0.8, 0.8, 0.8),    # Light gray
@@ -55,66 +87,6 @@ class bsAntMazeConfig:
             'goal': (0.0, 0.8, 0.0),    # Green
             'start': (0.8, 0.0, 0.0),   # Red
         }
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert configuration to a dictionary.
-        
-        Returns:
-            dict: Dictionary representation of the configuration
-        """
-        config_dict = {
-            'wall_height': self.wall_height,
-            'wall_width': self.wall_width,
-            'cell_size': self.cell_size,
-            'ant_scale': self.ant_scale,
-            'render_walls': self.render_walls,
-            'colors': self.colors,
-            **self.custom_settings
-        }
-        return config_dict
-    
-    @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> 'bsAntMazeConfig':
-        """
-        Create a configuration object from a dictionary.
-        
-        Args:
-            config_dict: Dictionary containing configuration values
-            
-        Returns:
-            bsAntMazeConfig: New configuration object
-        """
-        # Extract the known parameters
-        wall_height = config_dict.get('wall_height', 0.5)
-        wall_width = config_dict.get('wall_width', 0.1)
-        cell_size = config_dict.get('cell_size', 1.0)
-        ant_scale = config_dict.get('ant_scale', 0.8)
-        render_walls = config_dict.get('render_walls', True)
-        
-        # Create a new config object
-        config = cls(
-            wall_height=wall_height,
-            wall_width=wall_width,
-            cell_size=cell_size,
-            ant_scale=ant_scale,
-            render_walls=render_walls
-        )
-        
-        # Add colors if present
-        if 'colors' in config_dict:
-            config.colors = config_dict['colors']
-        
-        # Add any remaining custom settings
-        custom_keys = set(config_dict.keys()) - {
-            'wall_height', 'wall_width', 'cell_size', 'ant_scale',
-            'render_walls', 'colors'
-        }
-        
-        for key in custom_keys:
-            config.custom_settings[key] = config_dict[key]
-        
-        return config
     
     def set_color(self, element: str, color: Tuple[float, float, float]) -> None:
         """
@@ -138,6 +110,98 @@ class bsAntMazeConfig:
             
         self.colors[element] = color
     
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert visualization settings to a dictionary.
+        
+        Returns:
+            dict: Dictionary representation of the visualization settings
+        """
+        return {'colors': self.colors}
+    
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> 'bsAntMazeVisuals':
+        """
+        Create a visualization config from a dictionary.
+        
+        Args:
+            config_dict: Dictionary containing visualization settings
+            
+        Returns:
+            bsAntMazeVisuals: New visualization config object
+        """
+        visuals = cls()
+        if 'colors' in config_dict:
+            for element, color in config_dict['colors'].items():
+                visuals.set_color(element, color)
+        return visuals
+
+
+class bsAntMazeConfig:
+    """
+    Main configuration class for the AntMaze environment.
+    
+    This class combines physical dimensions and visualization settings,
+    along with any custom settings.
+    """
+    
+    def __init__(self, 
+                 dimensions: Optional[bsAntMazeDimensions] = None,
+                 visuals: Optional[bsAntMazeVisuals] = None,
+                 custom_settings: Optional[Dict[str, Any]] = None):
+        """
+        Initialize the maze configuration.
+        
+        Args:
+            dimensions: Physical dimensions configuration
+            visuals: Visualization configuration
+            custom_settings: Additional custom configuration settings
+        """
+        self.dimensions = dimensions if dimensions else bsAntMazeDimensions()
+        self.visuals = visuals if visuals else bsAntMazeVisuals()
+        self.custom_settings = custom_settings or {}
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert configuration to a dictionary.
+        
+        Returns:
+            dict: Dictionary representation of the configuration
+        """
+        return {
+            **self.dimensions.to_dict(),
+            **self.visuals.to_dict(),
+            **self.custom_settings
+        }
+    
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> 'bsAntMazeConfig':
+        """
+        Create a configuration object from a dictionary.
+        
+        Args:
+            config_dict: Dictionary containing configuration values
+            
+        Returns:
+            bsAntMazeConfig: New configuration object
+        """
+        # Extract dimension and visual settings
+        dim_keys = {'wall_height', 'cell_size', 'ant_scale'}
+        vis_keys = {'colors'}
+        
+        dim_dict = {k: config_dict[k] for k in dim_keys if k in config_dict}
+        vis_dict = {k: config_dict[k] for k in vis_keys if k in config_dict}
+        
+        # Create dimension and visual objects
+        dimensions = bsAntMazeDimensions.from_dict(dim_dict)
+        visuals = bsAntMazeVisuals.from_dict(vis_dict)
+        
+        # Extract custom settings
+        custom_keys = set(config_dict.keys()) - dim_keys - vis_keys
+        custom_settings = {k: config_dict[k] for k in custom_keys}
+        
+        return cls(dimensions, visuals, custom_settings)
+    
     def update(self, config_dict: Dict[str, Any]) -> None:
         """
         Update configuration with values from a dictionary.
@@ -145,11 +209,21 @@ class bsAntMazeConfig:
         Args:
             config_dict: Dictionary containing configuration values to update
         """
-        for key, value in config_dict.items():
-            if key == 'colors' and isinstance(value, dict):
-                for element, color in value.items():
-                    self.set_color(element, color)
-            elif hasattr(self, key):
-                setattr(self, key, value)
-            else:
-                self.custom_settings[key] = value
+        # Update dimensions
+        dim_keys = {'wall_height', 'cell_size', 'ant_scale'}
+        dim_updates = {k: v for k, v in config_dict.items() if k in dim_keys}
+        if dim_updates:
+            self.dimensions = bsAntMazeDimensions.from_dict({
+                **self.dimensions.to_dict(),
+                **dim_updates
+            })
+        
+        # Update colors
+        if 'colors' in config_dict:
+            for element, color in config_dict['colors'].items():
+                self.visuals.set_color(element, color)
+        
+        # Update custom settings
+        custom_keys = set(config_dict.keys()) - dim_keys - {'colors'}
+        for key in custom_keys:
+            self.custom_settings[key] = config_dict[key]

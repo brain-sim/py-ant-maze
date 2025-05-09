@@ -4,7 +4,7 @@ Basic usage example for the py-ant-maze package.
 This script demonstrates how to create, manipulate, and save maze configurations.
 """
 import numpy as np
-from py_ant_maze import bsAntMaze, bsAntMazeConfig
+from py_ant_maze import bsAntMaze, bsAntMazeConfig, bsAntMazeDimensions, bsAntMazeVisuals
 
 
 def main():
@@ -50,22 +50,30 @@ def main():
     
     # Create a new maze with custom configuration
     print("\nCreating maze with custom configuration...")
-    config = bsAntMazeConfig(
+    
+    # Create custom dimensions
+    dimensions = bsAntMazeDimensions(
         wall_height=0.8,
-        wall_width=0.15,
-        cell_size=1.2,
+        cell_size=1.2,  # This also sets the wall width
         ant_scale=0.7
     )
     
-    # Change colors for visualization
-    config.set_color("wall", (0.5, 0.5, 0.5))  # Darker gray walls
-    config.set_color("goal", (0.0, 1.0, 0.0))  # Bright green goal
+    # Create custom visuals
+    visuals = bsAntMazeVisuals()
+    visuals.set_color("wall", (0.5, 0.5, 0.5))  # Darker gray walls
+    visuals.set_color("goal", (0.0, 1.0, 0.0))  # Bright green goal
+    
+    # Create config with custom dimensions and visuals
+    config = bsAntMazeConfig(
+        dimensions=dimensions,
+        visuals=visuals
+    )
     
     # Print the configuration
     print("\nCustom configuration:")
     print(config.to_dict())
     
-    # Load the saved maze
+    # Load the saved maze with custom config
     print(f"\nLoading maze from {file_path}...")
     new_maze = bsAntMaze(config)
     new_maze.build_from_txt(file_path)

@@ -6,7 +6,7 @@ maze environments for ant navigation tasks.
 """
 
 from .ant_maze import bsAntMaze
-from .ant_maze_config import bsAntMazeConfig
+from .ant_maze_config import bsAntMazeConfig, bsAntMazeDimensions, bsAntMazeVisuals
 
 __version__ = "0.1.0"
-__all__ = ["bsAntMaze", "bsAntMazeConfig"]
+__all__ = ["bsAntMaze", "bsAntMazeConfig", "bsAntMazeDimensions", "bsAntMazeVisuals"]
