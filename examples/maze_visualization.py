@@ -85,16 +85,7 @@ def main():
     maze = bsAntMaze.from_config_file("example_config.json")
     
     # Create a sample maze layout
-    maze_layout = [
-        [1, 1, 1, 1, 1, 1, 1],
-        [1, 0, 0, 0, 0, 0, 1],
-        [1, 0, 1, 1, 1, 0, 1],
-        [1, 0, 1, 0, 0, 0, 1],
-        [1, 0, 1, 0, 1, 1, 1],
-        [1, 0, 0, 0, 0, 0, 1],
-        [1, 1, 1, 1, 1, 1, 1]
-    ]
-    maze.create_maze(maze_layout)
+    maze.build_from_txt("example_maze.txt")
     
     # Set start and goal positions
     maze.set_start_position((1, 1))
