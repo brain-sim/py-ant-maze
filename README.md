@@ -16,12 +16,6 @@ A Python package for creating and managing ant maze environments.
 
 ## Installation
 
-### From PyPI
-
-```bash
-pip install py-ant-maze
-```
-
 ### From Source
 
 ```bash
