@@ -1,89 +1,61 @@
 """
 Basic usage example for the py-ant-maze package.
 
-This script demonstrates how to create, manipulate, and save maze configurations.
+This example demonstrates how to:
+1. Create a maze with default configuration
+2. Load a maze from a text file
+3. Load configuration from a JSON file
+4. Save maze and configuration
 """
-import numpy as np
-from py_ant_maze import bsAntMaze, bsAntMazeConfig, bsAntMazeDimensions, bsAntMazeVisuals
-
+import os
+from py_ant_maze import bsAntMaze, bsAntMazeConfig
 
 def main():
     # Create a maze with default configuration
-    print("Creating default maze...")
     maze = bsAntMaze()
+    print("Default maze created")
     
-    # Print the default maze
-    print("\nDefault maze layout:")
-    print(maze.get_maze())
-    
-    # Print start and goal positions
-    print(f"\nStart position: {maze.get_start_position()}")
-    print(f"Goal position: {maze.get_goal_position()}")
-    
-    # Create a custom maze
-    print("\nCreating custom maze...")
-    custom_maze = [
-        [1, 1, 1, 1, 1, 1, 1],
-        [1, 0, 0, 0, 0, 0, 1],
-        [1, 0, 1, 1, 1, 0, 1],
-        [1, 0, 1, 0, 0, 0, 1],
-        [1, 0, 1, 0, 1, 1, 1],
-        [1, 0, 0, 0, 0, 0, 1],
-        [1, 1, 1, 1, 1, 1, 1]
+    # Create a simple maze layout
+    maze_layout = [
+        [1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 1, 0, 1],
+        [1, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1]
     ]
-    maze.create_maze(custom_maze)
+    maze.create_maze(maze_layout)
+    print("Maze layout created")
     
-    # Set start and goal positions
-    maze.set_start_position((1, 1))
-    maze.set_goal_position((5, 5))
+    # Save the maze to a text file
+    maze.save_to_txt("example_maze.txt")
+    print("Maze saved to example_maze.txt")
     
-    # Print the custom maze
-    print("\nCustom maze layout:")
-    print(maze.get_maze())
-    print(f"Start position: {maze.get_start_position()}")
-    print(f"Goal position: {maze.get_goal_position()}")
+    # Create a custom configuration
+    config = bsAntMazeConfig()
+    config.dimensions.wall_height = 0.7
+    config.dimensions.cell_size = 1.2
+    config.visuals.set_color('wall', (0.7, 0.7, 0.7))
+    config.visuals.set_color('ant', (0.2, 0.4, 0.9))
     
-    # Save maze to a text file
-    file_path = "custom_maze.txt"
-    maze.save_to_txt(file_path)
-    print(f"\nMaze saved to {file_path}")
+    # Save configuration to JSON
+    config.save_to_json("example_config.json")
+    print("Configuration saved to example_config.json")
     
-    # Create a new maze with custom configuration
-    print("\nCreating maze with custom configuration...")
+    # Create a new maze with the saved configuration
+    new_maze = bsAntMaze.from_config_file("example_config.json")
+    new_maze.build_from_txt("example_maze.txt")
+    print("New maze created with custom configuration")
     
-    # Create custom dimensions
-    dimensions = bsAntMazeDimensions(
-        wall_height=0.8,
-        cell_size=1.2,  # This also sets the wall width
-        ant_scale=0.7
-    )
+    # Demonstrate configuration access
+    print("\nMaze Configuration:")
+    print(f"Wall Height: {new_maze.get_config().dimensions.wall_height}")
+    print(f"Cell Size: {new_maze.get_config().dimensions.cell_size}")
+    print(f"Ant Color: {new_maze.get_config().visuals.get_color('ant')}")
     
-    # Create custom visuals
-    visuals = bsAntMazeVisuals()
-    visuals.set_color("wall", (0.5, 0.5, 0.5))  # Darker gray walls
-    visuals.set_color("goal", (0.0, 1.0, 0.0))  # Bright green goal
-    
-    # Create config with custom dimensions and visuals
-    config = bsAntMazeConfig(
-        dimensions=dimensions,
-        visuals=visuals
-    )
-    
-    # Print the configuration
-    print("\nCustom configuration:")
-    print(config.to_dict())
-    
-    # Load the saved maze with custom config
-    print(f"\nLoading maze from {file_path}...")
-    new_maze = bsAntMaze(config)
-    new_maze.build_from_txt(file_path)
-    
-    # Print the loaded maze
-    print("\nLoaded maze layout:")
-    print(new_maze.get_maze())
-    print(f"Start position: {new_maze.get_start_position()}")
-    print(f"Goal position: {new_maze.get_goal_position()}")
-
+    # # Clean up example files
+    # os.remove("example_maze.txt")
+    # os.remove("example_config.json")
+    # print("\nExample files cleaned up")
 
 if __name__ == "__main__":
     main()

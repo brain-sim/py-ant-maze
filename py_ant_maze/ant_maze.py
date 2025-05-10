@@ -56,6 +56,24 @@ class bsAntMaze:
         self._start_pos = (1, 1)  # Default start position
         self._goal_pos = (3, 1)   # Default goal position
     
+    @classmethod
+    def from_config_file(cls, config_file_path: str) -> 'bsAntMaze':
+        """
+        Create a maze instance from a configuration file.
+        
+        Args:
+            config_file_path: Path to the configuration file
+            
+        Returns:
+            bsAntMaze: New maze instance with loaded configuration
+            
+        Raises:
+            FileNotFoundError: If the config file doesn't exist
+            ValueError: If the config file format is invalid
+        """
+        config = bsAntMazeConfig.from_json(config_file_path)
+        return cls(config)
+    
     def build_from_txt(self, file_path: str) -> None:
         """
         Build maze configuration from a text file.
@@ -230,24 +248,31 @@ class bsAntMaze:
         
         Args:
             file_path: Path where the maze configuration will be saved
+            
+        Raises:
+            IOError: If the file cannot be written
         """
-        with open(file_path, 'w') as f:
-            for i in range(self._maze.shape[0]):
-                for j in range(self._maze.shape[1]):
-                    if (i, j) == self._start_pos:
-                        f.write('S')
-                    elif (i, j) == self._goal_pos:
-                        f.write('G')
-                    else:
-                        f.write(str(self._maze[i, j]))
-                f.write('\n')
+        try:
+            with open(file_path, 'w') as f:
+                # Convert maze to text representation
+                for i in range(self._maze.shape[0]):
+                    for j in range(self._maze.shape[1]):
+                        if (i, j) == self._start_pos:
+                            f.write('S')
+                        elif (i, j) == self._goal_pos:
+                            f.write('G')
+                        else:
+                            f.write(str(self._maze[i, j]))
+                    f.write('\n')
+        except IOError as e:
+            raise IOError(f"Failed to save maze to {file_path}: {str(e)}")
     
     def get_config(self) -> bsAntMazeConfig:
         """
-        Get the current maze configuration object.
+        Get the current maze configuration.
         
         Returns:
-            bsAntMazeConfig: Configuration object for the maze
+            bsAntMazeConfig: Current configuration object
         """
         return self._config
     
@@ -256,6 +281,11 @@ class bsAntMaze:
         Set a new maze configuration.
         
         Args:
-            maze_config: New configuration object for the maze
+            maze_config: New configuration object
+            
+        Raises:
+            ValueError: If the configuration is invalid
         """
+        if not isinstance(maze_config, bsAntMazeConfig):
+            raise ValueError("Configuration must be an instance of bsAntMazeConfig")
         self._config = maze_config

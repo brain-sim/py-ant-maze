@@ -1,135 +1,107 @@
 """
-Example of visualizing the AntMaze environment using matplotlib.
+Maze visualization example using matplotlib.
 
-This example demonstrates how to visualize a maze configuration
-using matplotlib for a simple 2D representation.
+This example demonstrates how to:
+1. Load a maze and configuration from files
+2. Visualize the maze with custom colors
+3. Show start and goal positions
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
-from py_ant_maze import bsAntMaze, bsAntMazeConfig, bsAntMazeDimensions, bsAntMazeVisuals
+from py_ant_maze import bsAntMaze
 
-
-def visualize_maze(maze, start_pos, goal_pos, config):
+def visualize_maze(maze, title="Maze Visualization", save_path=None):
     """
     Visualize the maze using matplotlib.
     
     Args:
-        maze (np.ndarray): 2D array representing the maze
-        start_pos (tuple): (row, col) start position
-        goal_pos (tuple): (row, col) goal position
-        config (bsAntMazeConfig): Configuration object with visualization settings
+        maze: bsAntMaze instance
+        title: Plot title
+        save_path: Optional path to save the visualization image. If None, image is not saved.
     """
+    # Get maze data
+    maze_grid = maze.get_maze()
+    start_pos = maze.get_start_position()
+    goal_pos = maze.get_goal_position()
+    config = maze.get_config()
+    
+    # Get cell size from config
+    cell_size = config.dimensions.cell_size
+    
     # Create figure and axis
     fig, ax = plt.subplots(figsize=(8, 8))
     
     # Get colors from config
-    colors = config.visuals.colors
-    wall_color = colors['wall']
-    floor_color = colors['floor']
-    start_color = colors['start']
-    goal_color = colors['goal']
+    wall_color = config.visuals.get_color('wall')
+    floor_color = config.visuals.get_color('floor')
+    start_color = config.visuals.get_color('start')
+    goal_color = config.visuals.get_color('goal')
     
-    # Set background color
-    ax.set_facecolor(floor_color)
+    # Create color matrix
+    colors = np.zeros((maze_grid.shape[0], maze_grid.shape[1], 3))
+    for i in range(maze_grid.shape[0]):
+        for j in range(maze_grid.shape[1]):
+            if maze_grid[i, j] == 1:  # 1 represents walls
+                colors[i, j] = wall_color
+            else:  # 0 represents floor
+                colors[i, j] = floor_color
     
-    # Draw walls
-    for i in range(maze.shape[0]):
-        for j in range(maze.shape[1]):
-            if maze[i, j] == 1:  # Wall
-                ax.add_patch(Rectangle((j, maze.shape[0] - i - 1), 1, 1, 
-                                      facecolor=wall_color, edgecolor='black', linewidth=0.5))
+    # Plot the maze with proper scaling
+    ax.imshow(colors, extent=[0, maze_grid.shape[1] * cell_size, 0, maze_grid.shape[0] * cell_size])
     
-    # Draw start and goal positions
-    start_row, start_col = start_pos
-    goal_row, goal_col = goal_pos
+    # Convert positions to cell centers
+    start_x = (start_pos[1] + 0.5) * cell_size
+    start_y = (maze_grid.shape[0] - start_pos[0] - 0.5) * cell_size
+    goal_x = (goal_pos[1] + 0.5) * cell_size
+    goal_y = (maze_grid.shape[0] - goal_pos[0] - 0.5) * cell_size
     
-    # Convert to plotting coordinates
-    start_y = maze.shape[0] - start_row - 1
-    goal_y = maze.shape[0] - goal_row - 1
+    # Plot start and goal positions with proper scaling
+    ax.plot(start_x, start_y, 'o', color=start_color, markersize=10, label='Start')
+    ax.plot(goal_x, goal_y, 'o', color=goal_color, markersize=10, label='Goal')
     
-    # Draw start position (circle)
-    start_circle = plt.Circle((start_col + 0.5, start_y + 0.5), 0.3, color=start_color)
-    ax.add_patch(start_circle)
+    # Add grid
+    ax.grid(True, which='both', color='gray', linewidth=0.5)
+    ax.set_xticks(np.arange(0, maze_grid.shape[1] * cell_size + cell_size, cell_size))
+    ax.set_yticks(np.arange(0, maze_grid.shape[0] * cell_size + cell_size, cell_size))
     
-    # Draw goal position (star)
-    ax.scatter(goal_col + 0.5, goal_y + 0.5, color=goal_color, marker='*', s=500, zorder=5)
+    # Set axis labels
+    ax.set_xlabel('X (units)')
+    ax.set_ylabel('Y (units)')
     
-    # Set grid
-    ax.grid(True, linestyle='-', alpha=0.2)
-    ax.set_xticks(np.arange(0, maze.shape[1] + 1, 1))
-    ax.set_yticks(np.arange(0, maze.shape[0] + 1, 1))
-    ax.set_xticklabels([])
-    ax.set_yticklabels([])
+    # Customize plot
+    ax.set_title(title)
+    ax.legend()
     
-    # Set limits and aspect ratio
-    ax.set_xlim(0, maze.shape[1])
-    ax.set_ylim(0, maze.shape[0])
-    ax.set_aspect('equal')
+    # Save the plot if save_path is provided
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Maze visualization saved to: {save_path}")
     
-    # Add title
-    plt.title('Ant Maze Environment')
-    
-    return fig, ax
-
+    # Show plot
+    plt.show()
 
 def main():
-    """
-    Main function to demonstrate maze visualization.
-    """
-    # Create a custom maze
-    custom_maze = [
-        [1, 1, 1, 1, 1, 1, 1, 1, 1],
-        [1, 0, 0, 0, 1, 0, 0, 0, 1],
-        [1, 0, 1, 0, 1, 0, 1, 0, 1],
-        [1, 0, 1, 0, 0, 0, 1, 0, 1],
-        [1, 0, 1, 1, 1, 1, 1, 0, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 1, 1, 1, 1, 1, 1, 1, 1]
-    ]
+    # Create maze from config file
+    maze = bsAntMaze.from_config_file("example_config.json")
     
-    # Create maze object and set the maze
-    maze = bsAntMaze()
-    maze.create_maze(custom_maze)
+    # Create a sample maze layout
+    maze_layout = [
+        [1, 1, 1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 1, 0, 1],
+        [1, 0, 1, 0, 0, 0, 1],
+        [1, 0, 1, 0, 1, 1, 1],
+        [1, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1]
+    ]
+    maze.create_maze(maze_layout)
     
     # Set start and goal positions
     maze.set_start_position((1, 1))
-    maze.set_goal_position((5, 7))
+    maze.set_goal_position((5, 5))
     
-    # Create custom dimensions
-    dimensions = bsAntMazeDimensions(
-        wall_height=0.8,
-        cell_size=1.2  # This also determines the wall width
-    )
-    
-    # Create custom visuals with different colors
-    visuals = bsAntMazeVisuals()
-    visuals.set_color('wall', (0.5, 0.5, 0.7))    # Bluish walls
-    visuals.set_color('floor', (0.95, 0.95, 0.9))  # Light cream floor
-    visuals.set_color('start', (1.0, 0.3, 0.3))    # Brighter red start
-    visuals.set_color('goal', (0.2, 0.8, 0.2))     # Brighter green goal
-    
-    # Create config with custom dimensions and visuals
-    config = bsAntMazeConfig(
-        dimensions=dimensions,
-        visuals=visuals
-    )
-    
-    # Visualize the maze
-    fig, ax = visualize_maze(
-        maze.get_maze(),
-        maze.get_start_position(),
-        maze.get_goal_position(),
-        config
-    )
-    
-    # Save the visualization
-    plt.savefig('maze_visualization.png', dpi=200, bbox_inches='tight')
-    print("Maze visualization saved as 'maze_visualization.png'")
-    
-    # Show the visualization
-    plt.show()
-
+    # Visualize the maze and save it
+    visualize_maze(maze, "Maze with Custom Configuration", save_path="maze_visualization.png")
 
 if __name__ == "__main__":
     main()
