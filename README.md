@@ -9,9 +9,10 @@ A Python package for creating and managing ant maze environments.
 3. [Basic Usage](#basic-usage)
 4. [Maze Creation](#maze-creation)
 5. [Configuration](#configuration)
-6. [Examples](#examples)
-7. [Development and Contribution](#development-and-contribution)
-8. [License](#license)
+6. [Visualization](#visualization)
+7. [Examples](#examples)
+8. [Development and Contribution](#development-and-contribution)
+9. [License](#license)
 
 ## Installation
 
@@ -178,40 +179,50 @@ config.set_color('goal', (0.0, 0.8, 0.0))   # Green goal
 config.set_color('start', (0.8, 0.0, 0.0))  # Red start
 ```
 
+## Visualization
+
+The package includes a visualization module that uses matplotlib to create and save maze visualizations:
+
+```python
+from py_ant_maze import bsAntMaze
+from py_ant_maze.examples.maze_visualization import visualize_maze
+
+# Create and configure your maze
+maze = bsAntMaze()
+maze.create_maze([
+    [1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1]
+])
+maze.set_start_position((1, 1))
+maze.set_goal_position((3, 3))
+
+# Visualize and save the maze
+visualize_maze(
+    maze,
+    title="My Custom Maze",
+    save_path="maze_visualization.png"  # Optional: save as high-quality image
+)
+```
+
+The visualization includes:
+- Walls and floor spaces with customizable colors
+- Start and goal positions marked with colored markers
+- Grid lines for better spatial reference
+- Proper scaling based on cell size
+- High-quality image output (300 DPI) when saving
+
 ## Examples
 
 The package includes several examples in the `examples` directory:
 
 - `basic_usage.py`: Simple demonstration of creating and manipulating maze environments
-- `maze_visualization.py`: Example of visualizing the maze using matplotlib
+- `maze_visualization.py`: Example of visualizing and saving maze layouts
 
 ## Development and Contribution
 
 ### Running Tests
 
-```bash
-# Install development dependencies
-pip install -e ".[dev]"
-
-# Run tests
-pytest
 ```
-
-### Code Style
-
-The project follows PEP 8 style guidelines. You can use Ruff for linting:
-
-```bash
-ruff check .
-```
-
-### Adding Features
-
-1. Fork the repository
-2. Create a feature branch
-3. Implement your feature with tests
-4. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
