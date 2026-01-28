@@ -1,0 +1,27 @@
+maze_type: edge_grid
+config:
+  cell_elements:
+    - name: open
+      token: "."
+  wall_elements:
+    - name: wall
+      token: "#"
+    - name: open
+      token: "."
+    - name: door
+      token: "D"
+layout:
+  cells: |
+    . . .
+    . . .
+    . . .
+  walls:
+    vertical: |
+      # # # #
+      # . D #
+      # # # #
+    horizontal: |
+      # # #
+      # . #
+      # . #
+      # # #

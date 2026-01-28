@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "py-ant-maze"
-version = "0.1.0"
-description = "A package for building and managing ant maze environments"
+version = "0.1.1"
+description = "Minimal utilities for maze definitions"
 readme = "README.md"
 authors = [
     {name = "Yihao Liu", email = "yihao.jhu@gmail.com"}
@@ -18,10 +18,9 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-keywords = ["maze", "navigation", "ant", "environment", "visualization"]
+keywords = ["maze", "navigation", "grid", "environment"]
 dependencies = [
-    "numpy>=1.19.0",
-    "matplotlib>=3.3.0",
+    "PyYAML>=6.0",
 ]
 requires-python = ">=3.7"
 
@@ -33,16 +32,3 @@ requires-python = ">=3.7"
 where = ["."]
 include = ["py_ant_maze*"]
 exclude = ["tests*", "examples*"]
-
-[tool.ruff]
-line-length = 100
-target-version = "py37"
-select = ["E", "F", "W", "I"]
-ignore = []
-
-[tool.ruff.per-file-ignores]
-"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py files
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = "test_*.py" 

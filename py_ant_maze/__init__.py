@@ -1,12 +1,24 @@
-"""
-py-ant-maze: A package for building and managing ant maze environments.
+"""Maze definition utilities."""
 
-This package provides tools for creating, manipulating, and visualizing
-maze environments for ant navigation tasks.
-"""
+from .element_set import ElementSet
+from .elements import MazeElement, CellElement, WallElement
+from .maze import Maze
+from .types import (
+    OccupancyGridConfig,
+    OccupancyGridLayout,
+    EdgeGridConfig,
+    EdgeGridLayout,
+)
 
-from .ant_maze import bsAntMaze
-from .ant_maze_config import bsAntMazeConfig, bsAntMazeDimensions, bsAntMazeVisuals
-
-__version__ = "0.1.0"
-__all__ = ["bsAntMaze", "bsAntMazeConfig", "bsAntMazeDimensions", "bsAntMazeVisuals"]
+__all__ = [
+    "Maze",
+    "ElementSet",
+    "MazeElement",
+    "CellElement",
+    "WallElement",
+    "OccupancyGridConfig",
+    "OccupancyGridLayout",
+    "EdgeGridConfig",
+    "EdgeGridLayout",
+]
+__version__ = "0.1.1"

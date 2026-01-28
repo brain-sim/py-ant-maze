@@ -1,0 +1,15 @@
+maze_type: occupancy_grid
+config:
+  cell_elements:
+    - name: wall
+      token: "#"
+      value: 1
+    - name: open
+      token: "."
+      value: 0
+layout:
+  grid: |
+    #######
+    #..#..#
+    #.....#
+    #######
