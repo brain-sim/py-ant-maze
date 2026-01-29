@@ -172,3 +172,23 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Vite / React
+dist/
+dist-ssr/
+*.local
+
+# Maze Editor Spacific
+packages/maze_editor/public/*.whl
+packages/maze_editor/coverage/
+
+# OS specific
+.DS_Store
+Thumbs.db

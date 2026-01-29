@@ -29,6 +29,6 @@ requires-python = ">=3.7"
 "Bug Tracker" = "https://github.com/brain-sim/py-ant-maze/issues"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 include = ["py_ant_maze*"]
 exclude = ["tests*", "examples*"]

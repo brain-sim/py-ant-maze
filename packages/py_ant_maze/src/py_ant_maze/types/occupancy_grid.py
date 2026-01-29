@@ -50,4 +50,4 @@ class OccupancyGridLayout:
 
     def to_mapping(self, config: OccupancyGridConfig, with_grid_numbers: bool) -> Dict[str, Any]:
         lines = format_grid(self.grid, config.cell_elements, with_grid_numbers)
-        return {"grid": "\n".join(lines)}
+        return {"grid": "\n" + "\n".join(lines)}
