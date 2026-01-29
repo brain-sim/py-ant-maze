@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { getPyodide, parseMaze, formatMaze, updateMaze, resizeMaze, addElement, type MazeData } from "./lib/pyodide";
+import clsx from 'clsx';
+import { getPyodide, parseMaze, formatMaze, updateMaze, resizeMaze, addElement, createNewMaze, type MazeData } from "./lib/pyodide";
 import { MazeGrid, generateColorStyle } from "./components/MazeGrid";
 import { Download, Upload, Play, FileText, AlertCircle, RefreshCw, Grid3X3, Code, Plus, Image as ImageIcon } from "lucide-react";
 import { toPng } from 'html-to-image';
@@ -30,6 +31,8 @@ function App() {
   const [input, setInput] = useState(DEFAULT_YAML);
   const [mazeData, setMazeData] = useState<MazeData | null>(null);
   const [selectedElementValue, setSelectedElementValue] = useState<number>(1);
+  const [selectedWallElementValue, setSelectedWallElementValue] = useState<number>(1);
+  const [selectedLayer, setSelectedLayer] = useState<'cells' | 'walls'>('cells');
   const [showCode, setShowCode] = useState(true);
   const [newElementName, setNewElementName] = useState("");
   const [newElementToken, setNewElementToken] = useState("");
@@ -59,7 +62,7 @@ function App() {
 
       if (mazeData) {
         // Find element matching the key
-        const element = mazeData.elements.find(el => el.token === e.key);
+        const element = mazeData.elements.concat(mazeData.wall_elements || []).find(el => el.token === e.key);
         if (element) {
           setSelectedElementValue(element.value);
         }
@@ -100,14 +103,44 @@ function App() {
 
   const handleCellClick = async (row: number, col: number) => {
     if (!mazeData) return;
-    // Optimization: Skip if value is already the same
-    if (mazeData.grid[row][col] === selectedElementValue) return;
+    const currentVal = mazeData.grid ? mazeData.grid[row][col] : mazeData.cells?.[row][col];
+    if (currentVal === selectedElementValue) return;
 
     try {
-      const { text, data } = await updateMaze(input, row, col, selectedElementValue);
+      const { text, data } = await updateMaze(input, row, col, selectedElementValue, 'cells');
       setInput(text);
       setMazeData(data);
       setError(null);
+    } catch (err: any) {
+      setError(err.toString());
+    }
+  };
+
+  const handleWallClick = async (row: number, col: number, wallType: 'vertical' | 'horizontal') => {
+    if (!mazeData) return;
+    const currentVal = wallType === 'vertical' ? mazeData.vertical_walls?.[row][col] : mazeData.horizontal_walls?.[row][col];
+    if (currentVal === selectedWallElementValue) return;
+
+    try {
+      const { text, data } = await updateMaze(input, row, col, selectedWallElementValue, wallType === 'vertical' ? 'vertical_walls' : 'horizontal_walls');
+      setInput(text);
+      setMazeData(data);
+      setError(null);
+    } catch (err: any) {
+      setError(err.toString());
+    }
+  };
+
+  const handleCreateMaze = async (type: 'occupancy_grid' | 'edge_grid') => {
+    try {
+      const { text, data } = await createNewMaze(type);
+      setInput(text);
+      setMazeData(data);
+      setError(null);
+      // Reset selections
+      setSelectedLayer('cells');
+      if (data.elements?.[0]) setSelectedElementValue(data.elements[0].value);
+      if (data.wall_elements?.[0]) setSelectedWallElementValue(data.wall_elements[0].value);
     } catch (err: any) {
       setError(err.toString());
     }
@@ -125,7 +158,7 @@ function App() {
     }
   };
 
-  const handleAddElement = async () => {
+  const handleAddElement = async (type: 'cell' | 'wall' = 'cell') => {
     if (!mazeData || !newElementName || !newElementToken) return;
     if (newElementToken.length !== 1) {
       setError("Token must be a single character");
@@ -133,7 +166,7 @@ function App() {
     }
 
     try {
-      const { text, data } = await addElement(input, newElementName, newElementToken);
+      const { text, data } = await addElement(input, newElementName, newElementToken, type);
       setInput(text);
       setMazeData(data);
       setNewElementName("");
@@ -271,6 +304,31 @@ function App() {
               </div>
             </div>
 
+            {/* Maze Type Selector */}
+            <div className="flex items-center justify-between bg-slate-800/30 rounded-lg p-2 border border-white/5">
+              <span className="text-xs text-slate-400">Maze Type:</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => handleCreateMaze('occupancy_grid')}
+                  className={clsx(
+                    "px-2 py-1 text-[10px] uppercase font-bold rounded transition-colors",
+                    mazeData?.maze_type === 'occupancy_grid' ? "bg-purple-500 text-white" : "bg-black/40 text-slate-500 hover:text-white"
+                  )}
+                >
+                  Occupancy
+                </button>
+                <button
+                  onClick={() => handleCreateMaze('edge_grid')}
+                  className={clsx(
+                    "px-2 py-1 text-[10px] uppercase font-bold rounded transition-colors",
+                    mazeData?.maze_type === 'edge_grid' ? "bg-purple-500 text-white" : "bg-black/40 text-slate-500 hover:text-white"
+                  )}
+                >
+                  Edge
+                </button>
+              </div>
+            </div>
+
             {/* Resize Controls */}
             {mazeData && (
               <div className="flex items-center justify-between bg-slate-800/30 rounded-lg p-2 border border-white/5">
@@ -282,10 +340,11 @@ function App() {
                       type="number"
                       min="1"
                       max="100"
-                      value={mazeData.grid.length}
+                      value={(mazeData.grid || mazeData.cells || []).length}
                       onChange={(e) => {
                         const val = parseInt(e.target.value);
-                        if (val > 0) handleResize(val, mazeData.grid[0]?.length || 0);
+                        const cols = (mazeData.grid || mazeData.cells || [])[0]?.length || 0;
+                        if (val > 0) handleResize(val, cols);
                       }}
                       className="w-12 bg-black/40 border border-white/10 rounded px-1.5 py-1 text-xs text-center focus:outline-none focus:border-purple-500 transition-colors"
                     />
@@ -297,10 +356,11 @@ function App() {
                       type="number"
                       min="1"
                       max="100"
-                      value={mazeData.grid[0]?.length || 0}
+                      value={(mazeData.grid || mazeData.cells || [])[0]?.length || 0}
                       onChange={(e) => {
                         const val = parseInt(e.target.value);
-                        if (val > 0) handleResize(mazeData.grid.length, val);
+                        const rows = (mazeData.grid || mazeData.cells || []).length;
+                        if (val > 0) handleResize(rows, val);
                       }}
                       className="w-12 bg-black/40 border border-white/10 rounded px-1.5 py-1 text-xs text-center focus:outline-none focus:border-purple-500 transition-colors"
                     />
@@ -312,7 +372,31 @@ function App() {
             {/* Add Element Controls */}
             {mazeData && (
               <div className="flex flex-col gap-2 bg-slate-800/30 rounded-lg p-2 border border-white/5">
-                <span className="text-xs text-slate-400">Add Element:</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Add Element:</span>
+                  {mazeData.maze_type === 'edge_grid' && (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setSelectedLayer('cells')}
+                        className={clsx(
+                          "px-2 py-0.5 text-[9px] uppercase font-bold rounded",
+                          selectedLayer === 'cells' ? "bg-purple-500 text-white" : "bg-black/20 text-slate-500"
+                        )}
+                      >
+                        Cell
+                      </button>
+                      <button
+                        onClick={() => setSelectedLayer('walls')}
+                        className={clsx(
+                          "px-2 py-0.5 text-[9px] uppercase font-bold rounded",
+                          selectedLayer === 'walls' ? "bg-purple-500 text-white" : "bg-black/20 text-slate-500"
+                        )}
+                      >
+                        Wall
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
                     <input
@@ -334,7 +418,7 @@ function App() {
                     />
                   </div>
                   <button
-                    onClick={handleAddElement}
+                    onClick={() => handleAddElement(selectedLayer === 'walls' ? 'wall' : 'cell')}
                     disabled={!newElementName || newElementToken.length !== 1}
                     className="shrink-0 p-1 rounded bg-purple-500/20 text-purple-400 hover:bg-purple-500 hover:text-white border border-purple-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Add Element"
@@ -407,32 +491,58 @@ function App() {
             <>
               {/* Toolbar */}
               <div className="shrink-0 p-4 bg-black/20 border-b border-white/10 overflow-x-auto">
-                <div className="flex items-center gap-2 flex-nowrap min-w-max">
-                  <span className="text-xs text-slate-400 mr-2">Elements:</span>
-                  {mazeData.elements.map((el) => {
-                    const { className: colorClass, style: colorStyle } = generateColorStyle(el.name);
-                    const isSelected = selectedElementValue === el.value;
-
-                    return (
+                <div className="flex flex-col gap-3">
+                  {mazeData.maze_type === 'edge_grid' && (
+                    <div className="flex items-center gap-2 border-b border-white/5 pb-2">
+                      <span className="text-xs text-slate-400 mr-2">Layer:</span>
                       <button
-                        key={el.value}
-                        onClick={() => setSelectedElementValue(el.value)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 shrink-0 border ${isSelected
-                          ? "ring-2 ring-white ring-offset-2 ring-offset-slate-900 border-transparent text-white"
-                          : "border-slate-600/50 text-slate-300 hover:border-slate-500 opacity-80 hover:opacity-100"
-                          } ${colorClass || ''}`}
-                        style={{
-                          ...(!colorClass ? colorStyle : undefined),
-                          ...(colorStyle?.color ? { color: colorStyle.color } : {})
-                        }}
+                        onClick={() => setSelectedLayer('cells')}
+                        className={clsx(
+                          "px-3 py-1 rounded-full text-xs font-bold transition-all",
+                          selectedLayer === 'cells' ? "bg-purple-500 text-white" : "bg-slate-700/50 text-slate-400 hover:bg-slate-700"
+                        )}
                       >
-                        <span className="w-5 h-5 rounded bg-black/20 flex items-center justify-center font-mono text-xs shadow-inner">
-                          {el.token}
-                        </span>
-                        <span className="font-bold">{el.name}</span>
+                        Cells
                       </button>
-                    );
-                  })}
+                      <button
+                        onClick={() => setSelectedLayer('walls')}
+                        className={clsx(
+                          "px-3 py-1 rounded-full text-xs font-bold transition-all",
+                          selectedLayer === 'walls' ? "bg-purple-500 text-white" : "bg-slate-700/50 text-slate-400 hover:bg-slate-700"
+                        )}
+                      >
+                        Walls
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 flex-nowrap min-w-max">
+                    <span className="text-xs text-slate-400 mr-2">Elements:</span>
+                    {(selectedLayer === 'cells' ? mazeData.elements : (mazeData.wall_elements || [])).map((el) => {
+                      const { className: colorClass, style: colorStyle } = generateColorStyle(el.name);
+                      const isSelected = selectedLayer === 'cells' ? selectedElementValue === el.value : selectedWallElementValue === el.value;
+
+                      return (
+                        <button
+                          key={`${selectedLayer}-${el.value}`}
+                          onClick={() => selectedLayer === 'cells' ? setSelectedElementValue(el.value) : setSelectedWallElementValue(el.value)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 shrink-0 border ${isSelected
+                            ? "ring-2 ring-white ring-offset-2 ring-offset-slate-900 border-transparent text-white"
+                            : "border-slate-600/50 text-slate-300 hover:border-slate-500 opacity-80 hover:opacity-100"
+                            } ${colorClass || ''}`}
+                          style={{
+                            ...(!colorClass ? colorStyle : undefined),
+                            ...(colorStyle?.color ? { color: colorStyle.color } : {})
+                          }}
+                        >
+                          <span className="w-5 h-5 rounded bg-black/20 flex items-center justify-center font-mono text-xs shadow-inner text-white">
+                            {el.token}
+                          </span>
+                          <span className="font-bold">{el.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -442,13 +552,17 @@ function App() {
                   ref={gridRef}
                   className="max-w-full max-h-full overflow-auto bg-slate-800/50 p-2 rounded-2xl shadow-2xl border border-white/10 backdrop-blur-sm"
                 >
-                  <MazeGrid data={mazeData} onCellClick={handleCellClick} />
+                  <MazeGrid
+                    data={mazeData}
+                    onCellClick={handleCellClick}
+                    onWallClick={handleWallClick}
+                  />
                 </div>
               </div>
 
               {/* Footer Hint */}
               <div className="shrink-0 px-4 py-2 text-center text-xs text-slate-500 border-t border-white/5 bg-slate-900/80">
-                Click cells to paint • Grid: {mazeData.grid.length} × {mazeData.grid[0]?.length || 0}
+                Click cells/walls to paint • Grid: {(mazeData.grid || mazeData.cells || []).length} × {(mazeData.grid || mazeData.cells || [])[0]?.length || 0}
               </div>
             </>
           ) : (
