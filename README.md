@@ -6,22 +6,22 @@ Monorepo for maze definition and editing tools.
 
 | Package | Description |
 |---------|-------------|
-| [py_ant_maze](packages/py_ant_maze) | Python library for defining and manipulating maze structures using YAML |
-| [maze_editor](packages/maze_editor) | Web-based visual editor for creating mazes |
+| [py_ant_maze](py_ant_maze) | Python library for defining and manipulating maze structures using YAML |
+| [maze_editor](maze_editor) | Web-based visual editor for creating mazes |
 
 ## Quick Start
 
 ### Python Library
 
 ```bash
-pip install -e packages/py_ant_maze
+pip install -e py_ant_maze
 ```
 
 ### Web Editor
 
 ```bash
 # Build the Python wheel
-cd packages/py_ant_maze
+cd py_ant_maze
 pip install build
 python -m build
 

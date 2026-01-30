@@ -186,8 +186,8 @@ dist-ssr/
 *.local
 
 # Maze Editor Spacific
-packages/maze_editor/public/*.whl
-packages/maze_editor/coverage/
+maze_editor/public/*.whl
+maze_editor/coverage/
 
 # OS specific
 .DS_Store
