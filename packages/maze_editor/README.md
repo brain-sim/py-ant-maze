@@ -1,65 +1,60 @@
 # Maze Editor
 
-A modern, web-based visual editor for configuring mazes for `py_ant_maze`. Built with React, Vite, and Pyodide, it runs the Python maze logic directly in the browser.
+Web-based visual editor for creating and editing mazes. Built with React, Vite, and Pyodide to run `py_ant_maze` directly in the browser.
 
 ## Features
 
--   **Visual Grid Editor**: Interactive grid for painting maze elements.
--   **Full-Width Layout**: Responsive design that utilizes the full browser window.
--   **Dynamic Resizing**: Adjust maze rows and columns on the fly.
--   **Custom Elements**: Create new maze elements (e.g., "Fire", "Water") with custom tokens and dynamic colors.
--   **Drag & Paint**: Click and drag to quickly paint multiple cells.
--   **Image Export**: Download high-quality PNG images of your maze layout.
--   **Configuration Sync**:
-    -   Import/Export YAML configuration files.
-    -   Real-time bidirectional sync between Visual Editor and YAML Code.
--   **Keyboard Shortcuts**: Use element tokens (e.g., `#`, `.`) as hotkeys for quick selection.
+- **Visual Grid Editor**: Click and drag to paint maze elements
+- **Dual Maze Types**: Support for occupancy grids and edge grids
+- **Custom Elements**: Add new elements with custom names and tokens
+- **Real-time Sync**: Bidirectional synchronization between grid and YAML
+- **Keyboard Shortcuts**: Press element tokens for quick selection
+- **Export**: Download as YAML file or PNG image
 
 ## Getting Started
 
 ### Prerequisites
 
--   Node.js (v18+)
--   Python 3.10+ (for building the backend wheel)
+- Node.js v18+
+- Python 3.10+ (for building the wheel)
 
 ### Installation
 
-1.  **Build the Python Backend**: The editor requires a compiled wheel of `py_ant_maze`.
-    ```bash
-    cd ../py_ant_maze
-    # Ensure you have the 'build' package
-    pip install build
-    python -m build
-    ```
+1. Build the Python wheel:
+   ```bash
+   cd ../py_ant_maze
+   pip install build
+   python -m build
+   ```
 
-2.  **Setup Editor**:
-    ```bash
-    cd ../maze_editor
-    npm install
-    ```
+2. Install and run:
+   ```bash
+   npm install
+   npm run dev
+   ```
 
-### Development
+The dev server automatically copies the wheel from `../py_ant_maze/dist/` to `public/`.
 
-To start the development server:
+## Project Structure
 
-```bash
-npm run dev
+```
+src/
+├── components/     # React components
+│   ├── layout/     # Header, LoadingScreen
+│   ├── editor/     # CodePanel, VisualEditor
+│   ├── controls/   # Element palette, controls
+│   └── MazeGrid.tsx
+├── hooks/          # Custom React hooks
+├── services/       # Pyodide integration
+├── types/          # TypeScript types
+├── constants/      # Default values
+└── App.tsx         # Main application
 ```
 
-**Note**: The `npm run dev` and `npm run build` commands automatically run a `pre` script that copies the built `.whl` from `../py_ant_maze/dist/` into the `public/` folder for Pyodide to load. Ensure you have built the wheel (Step 1 above) before starting.
-
-### Building
-
-To build for production:
+## Building
 
 ```bash
 npm run build
 ```
 
-The output will be in the `dist` directory.
-
-## project Structure
-
--   `src/components`: React components (MazeGrid, etc.)
--   `src/lib`: Pyodide integration and helper functions.
--   `src/App.tsx`: Main application logic and state management.
+Output is in the `dist/` directory.

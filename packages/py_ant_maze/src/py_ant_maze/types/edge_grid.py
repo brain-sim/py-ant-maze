@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 from ..element_set import ElementSet
 from ..elements import CellElement, WallElement
 from ..grid import parse_grid, format_grid
+from ..yaml_types import literal_block
 
 
 class EdgeGridConfig:
@@ -83,10 +84,10 @@ class EdgeGridLayout:
         vertical_lines = format_grid(self.vertical_walls, config.wall_elements, with_grid_numbers)
         horizontal_lines = format_grid(self.horizontal_walls, config.wall_elements, with_grid_numbers)
         return {
-            "cells": "\n".join(cells_lines),
+            "cells": literal_block(cells_lines),
             "walls": {
-                "vertical": "\n".join(vertical_lines),
-                "horizontal": "\n".join(horizontal_lines),
+                "vertical": literal_block(vertical_lines),
+                "horizontal": literal_block(horizontal_lines),
             },
         }
 

@@ -1,9 +1,25 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import yaml
 
+from .yaml_types import LiteralStr, QuotedStr
 from .registry import get_types
 
+
+class _MazeDumper(yaml.SafeDumper):
+    """YAML dumper that renders layout strings using literal blocks."""
+
+
+def _literal_block_representer(dumper: yaml.Dumper, data: LiteralStr) -> yaml.ScalarNode:
+    return dumper.represent_scalar("tag:yaml.org,2002:str", str(data), style="|")
+
+
+def _quoted_str_representer(dumper: yaml.Dumper, data: QuotedStr) -> yaml.ScalarNode:
+    return dumper.represent_scalar("tag:yaml.org,2002:str", str(data), style="'")
+
+
+_MazeDumper.add_representer(LiteralStr, _literal_block_representer)
+_MazeDumper.add_representer(QuotedStr, _quoted_str_representer)
 
 class Maze:
     def __init__(self, maze_type: str, config: object, layout: object) -> None:
@@ -25,7 +41,7 @@ class Maze:
 
     def to_text(self, with_grid_numbers: bool = False) -> str:
         mapping = self.to_mapping(with_grid_numbers=with_grid_numbers)
-        return yaml.safe_dump(mapping, sort_keys=False)
+        return yaml.dump(mapping, Dumper=_MazeDumper, sort_keys=False, default_flow_style=False)
 
     def to_file(self, path: str, with_grid_numbers: bool = False) -> None:
         with open(path, "w", encoding="utf-8") as handle:

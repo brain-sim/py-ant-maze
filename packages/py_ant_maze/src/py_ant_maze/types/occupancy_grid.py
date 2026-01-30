@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 from ..element_set import ElementSet
 from ..elements import CellElement
 from ..grid import parse_grid, format_grid
+from ..yaml_types import literal_block
 
 
 class OccupancyGridConfig:
@@ -50,4 +51,4 @@ class OccupancyGridLayout:
 
     def to_mapping(self, config: OccupancyGridConfig, with_grid_numbers: bool) -> Dict[str, Any]:
         lines = format_grid(self.grid, config.cell_elements, with_grid_numbers)
-        return {"grid": "\n" + "\n".join(lines)}
+        return {"grid": literal_block(lines)}

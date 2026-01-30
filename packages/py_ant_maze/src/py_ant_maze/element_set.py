@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Set, Iterable, Type
 
 from .elements import MazeElement
+from .yaml_types import QuotedStr
 
 
 class ElementSet:
@@ -48,7 +49,7 @@ class ElementSet:
 
     def to_list(self) -> List[Dict[str, object]]:
         return [
-            {"name": el.name, "token": el.token, "value": el.value} for el in self._elements
+            {"name": el.name, "token": QuotedStr(el.token), "value": el.value} for el in self._elements
         ]
 
     @classmethod

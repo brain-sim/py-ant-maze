@@ -1,21 +1,15 @@
 import React from 'react';
 import clsx from 'clsx';
-import { type MazeData } from '../lib/pyodide';
+import type { MazeData } from '../types/maze';
+import { CELL_ELEMENT_COLORS, WALL_ELEMENT_COLORS, ELEMENT_COLORS } from '../constants/defaults';
 
 interface MazeGridProps {
     data: MazeData;
     onCellClick: (row: number, col: number) => void;
     onWallClick?: (row: number, col: number, wallType: 'vertical' | 'horizontal') => void;
+    selectedLayer?: 'cells' | 'walls';
     className?: string;
 }
-
-const ELEMENT_COLORS: Record<string, string> = {
-    wall: 'bg-slate-700 hover:bg-slate-600',
-    open: 'bg-slate-100 hover:bg-white',
-    empty: 'bg-slate-100 hover:bg-white',
-    start: 'bg-emerald-500 hover:bg-emerald-400',
-    goal: 'bg-rose-500 hover:bg-rose-400',
-};
 
 // Simple string hash function
 const hashString = (str: string) => {
@@ -29,8 +23,14 @@ const hashString = (str: string) => {
 // Helper to determine text color (black/white) based on background luminance
 const getContrastColor = (hexOrHsl: string) => {
     // For hardcoded classes, we use a lookup (simplified for this context)
-    if (hexOrHsl.includes('bg-slate-700')) return '#ffffff'; // Dark slate
-    if (hexOrHsl.includes('bg-slate-100')) return '#0f172a'; // Light slate (slate-900 text)
+    // Light backgrounds - use dark text
+    if (hexOrHsl.includes('bg-slate-50')) return '#0f172a';
+    if (hexOrHsl.includes('bg-slate-100')) return '#0f172a';
+    if (hexOrHsl.includes('bg-slate-200')) return '#0f172a';
+    if (hexOrHsl.includes('bg-white')) return '#0f172a';
+    // Dark backgrounds - use white text
+    if (hexOrHsl.includes('bg-slate-600')) return '#ffffff';
+    if (hexOrHsl.includes('bg-slate-700')) return '#ffffff';
     if (hexOrHsl.includes('bg-emerald-500')) return '#ffffff';
     if (hexOrHsl.includes('bg-rose-500')) return '#ffffff';
 
@@ -45,26 +45,38 @@ const getContrastColor = (hexOrHsl: string) => {
 };
 
 // Generate consistent HSL color from name
-export const generateColorStyle = (name: string) => {
+export const generateColorStyle = (name: string, layer: 'cell' | 'wall' | 'corner' = 'cell') => {
+    // Select the appropriate color map based on layer
+    const colorMap = layer === 'wall' ? WALL_ELEMENT_COLORS :
+        layer === 'corner' ? WALL_ELEMENT_COLORS :
+            CELL_ELEMENT_COLORS;
+
+    if (colorMap[name]) {
+        const textColor = getContrastColor(colorMap[name]);
+        return { className: colorMap[name], style: { color: textColor } as React.CSSProperties };
+    }
+
+    // Fallback to ELEMENT_COLORS for legacy compatibility
     if (ELEMENT_COLORS[name]) {
         const textColor = getContrastColor(ELEMENT_COLORS[name]);
         return { className: ELEMENT_COLORS[name], style: { color: textColor } as React.CSSProperties };
     }
 
     const hash = hashString(name);
-    // Use good saturation/lightness for vibrant but readable colors
+    // Use slightly different saturation/lightness based on layer
     const hue = Math.abs(hash % 360);
-    // Adjusted range: 40-60% lightness for better saturation
-    const bg = `hsl(${hue}, 70%, 50%)`;
-    const hover = `hsl(${hue}, 70%, 60%)`;
+    const saturation = layer === 'wall' ? 60 : 70;
+    const lightness = layer === 'wall' ? 45 : 50;
+    const bg = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    const hover = `hsl(${hue}, ${saturation}%, ${lightness + 10}%)`;
 
     // Determine contrast
-    const textColor = '#ffffff'; // With L=50% and S=70%, white is usually good for most hues here.
+    const textColor = '#ffffff';
 
     return { style: { backgroundColor: bg, color: textColor, '--hover-color': hover } as React.CSSProperties };
 };
 
-export function MazeGrid({ data, onCellClick, onWallClick, className }: MazeGridProps) {
+export function MazeGrid({ data, onCellClick, onWallClick, selectedLayer = 'cells', className }: MazeGridProps) {
     const { maze_type, grid, cells, vertical_walls, horizontal_walls, elements, wall_elements } = data;
     const [isDrawing, setIsDrawing] = React.useState(false);
 
@@ -87,10 +99,12 @@ export function MazeGrid({ data, onCellClick, onWallClick, className }: MazeGrid
     }, [wall_elements]);
 
     const handleCellAction = (r: number, c: number) => {
+        if (maze_type === 'edge_grid' && selectedLayer !== 'cells') return;
         onCellClick(r, c);
     };
 
     const handleWallAction = (r: number, c: number, type: 'vertical' | 'horizontal') => {
+        if (selectedLayer !== 'walls') return;
         onWallClick?.(r, c, type);
     };
 
@@ -114,8 +128,12 @@ export function MazeGrid({ data, onCellClick, onWallClick, className }: MazeGrid
 
         return (
             <div
-                className={clsx('inline-grid gap-0.5 bg-slate-900/50 p-0.5 rounded-xl', className)}
-                style={{ gridTemplateColumns: `repeat(${cols}, ${cellSize}px)` }}
+                className={clsx('inline-grid p-0.5 rounded-xl', className)}
+                style={{
+                    gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
+                    gap: '2px',
+                    backgroundColor: 'rgba(148, 163, 184, 0.15)'
+                }}
                 onMouseLeave={() => setIsDrawing(false)}
             >
                 {grid.map((row, rIndex) =>
@@ -152,77 +170,81 @@ export function MazeGrid({ data, onCellClick, onWallClick, className }: MazeGrid
 
         return (
             <div
-                className={clsx('inline-flex flex-col bg-slate-900/50 p-2 rounded-xl transition-all', className)}
+                className={clsx('inline-block bg-slate-900/50 p-2 rounded-xl transition-all', className)}
                 onMouseLeave={() => setIsDrawing(false)}
+                style={{ display: 'grid', gridTemplateColumns: `repeat(${w}, ${T}px ${S}px) ${T}px`, gridTemplateRows: `repeat(${h}, ${T}px ${S}px) ${T}px` }}
             >
                 {Array.from({ length: h * 2 + 1 }).map((_, r) => {
                     const isWallRow = r % 2 === 0;
                     const rIndex = Math.floor(r / 2);
 
-                    return (
-                        <div key={r} className="flex">
-                            {Array.from({ length: w * 2 + 1 }).map((_, c) => {
-                                const isWallCol = c % 2 === 0;
-                                const cIndex = Math.floor(c / 2);
+                    return Array.from({ length: w * 2 + 1 }).map((_, c) => {
+                        const isWallCol = c % 2 === 0;
+                        const cIndex = Math.floor(c / 2);
 
-                                if (isWallRow && isWallCol) {
-                                    // Corner/Intersection
-                                    return <div key={c} style={{ width: T, height: T }} className="bg-slate-700/30" />;
-                                }
+                        if (isWallRow && isWallCol) {
+                            // Corner - use wall color to blend with wall areas
+                            const { className: colorClass, style: colorStyle } = generateColorStyle('empty', 'corner');
+                            return <div key={`${r}-${c}`} className={colorClass} style={{ ...colorStyle }} />;
+                        }
 
-                                if (isWallRow) {
-                                    // Horizontal Wall
-                                    const val = horizontal_walls[rIndex][cIndex];
-                                    const el = wallElementMap.get(val);
-                                    const { className: colorClass, style: colorStyle } = generateColorStyle(el?.name || 'unknown');
-                                    return (
-                                        <div
-                                            key={c}
-                                            onMouseDown={() => handleMouseDown(rIndex, cIndex, 'horizontal')}
-                                            onMouseEnter={() => handleMouseEnter(rIndex, cIndex, 'horizontal')}
-                                            style={{ width: S, height: T, ...colorStyle }}
-                                            className={clsx('cursor-pointer transition-all hover:brightness-125', colorClass)}
-                                            title={`H-Wall (${rIndex}, ${cIndex})`}
-                                        />
-                                    );
-                                }
+                        if (isWallRow) {
+                            // Horizontal Wall - extend to cover corners
+                            const val = horizontal_walls[rIndex][cIndex];
+                            const el = wallElementMap.get(val);
+                            const isWall = el?.name === 'wall';
+                            const { className: colorClass, style: colorStyle } = generateColorStyle(el?.name || 'unknown', 'wall');
+                            return (
+                                <div
+                                    key={`${r}-${c}`}
+                                    onMouseDown={() => handleMouseDown(rIndex, cIndex, 'horizontal')}
+                                    onMouseEnter={() => handleMouseEnter(rIndex, cIndex, 'horizontal')}
+                                    style={{
+                                        ...colorStyle,
+                                        ...(isWall ? { width: S + T, marginLeft: -T / 2, marginRight: -T / 2, zIndex: 1 } : {})
+                                    }}
+                                    className={clsx('cursor-pointer transition-all hover:brightness-125 relative', colorClass)}
+                                    title={`H-Wall (${rIndex}, ${cIndex})`}
+                                />
+                            );
+                        }
 
-                                if (isWallCol) {
-                                    // Vertical Wall
-                                    const val = vertical_walls[rIndex][cIndex];
-                                    const el = wallElementMap.get(val);
-                                    const { className: colorClass, style: colorStyle } = generateColorStyle(el?.name || 'unknown');
-                                    return (
-                                        <div
-                                            key={c}
-                                            onMouseDown={() => handleMouseDown(rIndex, cIndex, 'vertical')}
-                                            onMouseEnter={() => handleMouseEnter(rIndex, cIndex, 'vertical')}
-                                            style={{ width: T, height: S, ...colorStyle }}
-                                            className={clsx('cursor-pointer transition-all hover:brightness-125', colorClass)}
-                                            title={`V-Wall (${rIndex}, ${cIndex})`}
-                                        />
-                                    );
-                                }
+                        if (isWallCol) {
+                            // Vertical Wall - extend to cover corners
+                            const val = vertical_walls[rIndex][cIndex];
+                            const el = wallElementMap.get(val);
+                            const isWall = el?.name === 'wall';
+                            const { className: colorClass, style: colorStyle } = generateColorStyle(el?.name || 'unknown', 'wall');
+                            return (
+                                <div
+                                    key={`${r}-${c}`}
+                                    onMouseDown={() => handleMouseDown(rIndex, cIndex, 'vertical')}
+                                    onMouseEnter={() => handleMouseEnter(rIndex, cIndex, 'vertical')}
+                                    style={{
+                                        ...colorStyle,
+                                        ...(isWall ? { height: S + T, marginTop: -T / 2, marginBottom: -T / 2, zIndex: 1 } : {})
+                                    }}
+                                    className={clsx('cursor-pointer transition-all hover:brightness-125 relative', colorClass)}
+                                    title={`V-Wall (${rIndex}, ${cIndex})`}
+                                />
+                            );
+                        }
 
-                                // Cell
-                                const val = cells[rIndex][cIndex];
-                                const el = cellElementMap.get(val);
-                                const { className: colorClass, style: colorStyle } = generateColorStyle(el?.name || 'unknown');
-                                return (
-                                    <div
-                                        key={c}
-                                        onMouseDown={() => handleMouseDown(rIndex, cIndex, 'cell')}
-                                        onMouseEnter={() => handleMouseEnter(rIndex, cIndex, 'cell')}
-                                        style={{ width: S, height: S, ...colorStyle }}
-                                        className={clsx('cursor-pointer transition-all flex items-center justify-center font-mono text-[10px] opacity-80 hover:opacity-100', colorClass)}
-                                        title={`Cell (${rIndex}, ${cIndex})`}
-                                    >
-                                        {el?.token}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    );
+                        // Cell
+                        const val = cells[rIndex][cIndex];
+                        const el = cellElementMap.get(val);
+                        const { className: colorClass, style: colorStyle } = generateColorStyle(el?.name || 'unknown', 'cell');
+                        return (
+                            <div
+                                key={`${r}-${c}`}
+                                onMouseDown={() => handleMouseDown(rIndex, cIndex, 'cell')}
+                                onMouseEnter={() => handleMouseEnter(rIndex, cIndex, 'cell')}
+                                style={{ ...colorStyle }}
+                                className={clsx('cursor-pointer transition-all hover:opacity-90', colorClass)}
+                                title={`Cell (${rIndex}, ${cIndex})`}
+                            />
+                        );
+                    });
                 })}
             </div>
         );
