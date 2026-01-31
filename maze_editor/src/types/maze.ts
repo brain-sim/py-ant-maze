@@ -11,9 +11,25 @@ export interface MazeElement {
     value: number;
 }
 
+/** Hub configuration for radial_arm maze type */
+export interface RadialArmHub {
+    shape: 'circular' | 'polygon';
+    angle_degrees: number;
+    radius?: number;        // For circular shape
+    side_length?: number;   // For polygon shape
+    sides?: number;         // For polygon shape
+}
+
+/** Individual arm in radial_arm maze (EdgeGrid-like structure) */
+export interface RadialArmArm {
+    cells: number[][];           // width × length grid
+    vertical_walls: number[][];  // width × (length + 1)
+    horizontal_walls: number[][]; // (width + 1) × length
+}
+
 /** Parsed maze data from Pyodide */
 export interface MazeData {
-    maze_type: 'occupancy_grid' | 'edge_grid';
+    maze_type: 'occupancy_grid' | 'edge_grid' | 'radial_arm';
     /** Grid for occupancy_grid type */
     grid?: number[][];
     /** Cells for edge_grid type */
@@ -22,9 +38,13 @@ export interface MazeData {
     vertical_walls?: number[][];
     /** Horizontal walls for edge_grid type */
     horizontal_walls?: number[][];
+    /** Arms for radial_arm type (list of EdgeGrid-like structures) */
+    arms?: RadialArmArm[];
+    /** Hub configuration for radial_arm type */
+    hub?: RadialArmHub;
     /** Cell elements configuration */
     elements: MazeElement[];
-    /** Wall elements configuration (edge_grid only) */
+    /** Wall elements configuration (edge_grid and radial_arm) */
     wall_elements?: MazeElement[];
     /** Raw config object */
     config: Record<string, unknown>;
@@ -36,17 +56,18 @@ export interface MazeResult {
     data: MazeData;
 }
 
-/** Grid types for edge_grid maze */
+/** Grid types for maze editing */
 export type GridType = 'grid' | 'cells' | 'vertical_walls' | 'horizontal_walls';
 
-/** Layer selection for edge_grid editing */
+/** Layer selection for edge_grid/radial_arm editing */
 export type LayerType = 'cells' | 'walls';
 
-/** Wall orientation for edge_grid */
+/** Wall orientation for edge_grid and radial_arm */
 export type WallType = 'vertical' | 'horizontal';
 
 /** Element type when adding new elements */
 export type ElementType = 'cell' | 'wall';
 
 /** Maze type options */
-export type MazeType = 'occupancy_grid' | 'edge_grid';
+export type MazeType = 'occupancy_grid' | 'edge_grid' | 'radial_arm';
+

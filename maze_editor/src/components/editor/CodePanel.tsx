@@ -22,7 +22,7 @@ export interface CodePanelProps {
     /** Callback to sync YAML to grid */
     onParse: () => void;
     /** Callback to create new maze */
-    onCreate: (type: MazeType) => void;
+    onCreate: (type: MazeType, hubType?: 'circular' | 'polygon') => void;
     /** Callback to resize maze */
     onResize: (rows: number, cols: number) => void;
     /** Callback to add element */
@@ -111,6 +111,7 @@ export function CodePanel({
                 {/* Maze Type Selector */}
                 <MazeTypeSelector
                     currentType={mazeData?.maze_type}
+                    currentHubShape={mazeData?.hub?.shape as 'circular' | 'polygon' | undefined}
                     onChange={onCreate}
                 />
 

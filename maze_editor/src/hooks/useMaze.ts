@@ -5,12 +5,13 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import type { MazeData, LayerType, MazeType, ElementType } from '../types/maze';
+import type { MazeData, LayerType, MazeType, ElementType, WallType } from '../types/maze';
 import {
     getPyodide,
     parseMaze,
     formatMaze,
     updateMaze,
+    updateRadialArmCell,
     resizeMaze,
     addElement,
     createNewMaze,
@@ -47,10 +48,14 @@ export interface UseMazeActions {
     parse: () => Promise<void>;
     /** Format and parse the current input */
     format: () => Promise<void>;
-    /** Update a cell value */
+    /** Update a cell value (for occupancy_grid and edge_grid) */
     updateCell: (row: number, col: number) => Promise<void>;
-    /** Update a wall value */
-    updateWall: (row: number, col: number, wallType: 'vertical' | 'horizontal') => Promise<void>;
+    /** Update a wall value (for edge_grid) */
+    updateWall: (row: number, col: number, wallType: WallType) => Promise<void>;
+    /** Update a radial_arm cell (arm index + row/col within arm) */
+    updateRadialCell: (armIndex: number, row: number, col: number) => Promise<void>;
+    /** Update a radial_arm wall (arm index + row/col within arm) */
+    updateRadialWall: (armIndex: number, row: number, col: number, wallType: WallType) => Promise<void>;
     /** Resize the maze grid */
     resize: (rows: number, cols: number) => Promise<void>;
     /** Add a new element */
@@ -114,11 +119,18 @@ export function useMaze(): UseMazeResult {
         }
     }, [input, parse]);
 
-    // Update a cell
+    // Update a cell (occupancy_grid and edge_grid only)
     const updateCell = useCallback(async (row: number, col: number) => {
         if (!mazeData) return;
+        if (mazeData.maze_type === 'radial_arm') return; // Use updateRadialCell instead
 
-        const currentVal = mazeData.grid ? mazeData.grid[row][col] : mazeData.cells?.[row][col];
+        // Get current value based on maze type
+        let currentVal: number | undefined;
+        if (mazeData.maze_type === 'occupancy_grid') {
+            currentVal = mazeData.grid?.[row][col];
+        } else if (mazeData.maze_type === 'edge_grid') {
+            currentVal = mazeData.cells?.[row][col];
+        }
         if (currentVal === selectedElementValue) return;
 
         try {
@@ -131,22 +143,80 @@ export function useMaze(): UseMazeResult {
         }
     }, [mazeData, input, selectedElementValue]);
 
-    // Update a wall
+    // Update a wall (edge_grid only)
     const updateWall = useCallback(async (
         row: number,
         col: number,
-        wallType: 'vertical' | 'horizontal'
+        wallType: WallType
     ) => {
         if (!mazeData) return;
+        if (mazeData.maze_type !== 'edge_grid') return; // Use updateRadialWall for radial_arm
 
-        const currentVal = wallType === 'vertical'
-            ? mazeData.vertical_walls?.[row][col]
-            : mazeData.horizontal_walls?.[row][col];
+        // Get current value based on wall type
+        let currentVal: number | undefined;
+        if (wallType === 'vertical') {
+            currentVal = mazeData.vertical_walls?.[row][col];
+        } else if (wallType === 'horizontal') {
+            currentVal = mazeData.horizontal_walls?.[row][col];
+        }
         if (currentVal === selectedWallElementValue) return;
 
+        const gridType = wallType === 'vertical' ? 'vertical_walls' : 'horizontal_walls';
+
         try {
-            const gridType = wallType === 'vertical' ? 'vertical_walls' : 'horizontal_walls';
             const { text, data } = await updateMaze(input, row, col, selectedWallElementValue, gridType);
+            setInput(text);
+            setMazeData(data);
+            setError(null);
+        } catch (err) {
+            setError(String(err));
+        }
+    }, [mazeData, input, selectedWallElementValue]);
+
+    // Update a radial_arm cell
+    const updateRadialCell = useCallback(async (
+        armIndex: number,
+        row: number,
+        col: number
+    ) => {
+        if (!mazeData || mazeData.maze_type !== 'radial_arm') return;
+
+        const arm = mazeData.arms?.[armIndex];
+        const currentVal = arm?.cells?.[row]?.[col];
+        if (currentVal === selectedElementValue) return;
+
+        try {
+            const { text, data } = await updateRadialArmCell(input, armIndex, row, col, selectedElementValue, 'cells');
+            setInput(text);
+            setMazeData(data);
+            setError(null);
+        } catch (err) {
+            setError(String(err));
+        }
+    }, [mazeData, input, selectedElementValue]);
+
+    // Update a radial_arm wall
+    const updateRadialWall = useCallback(async (
+        armIndex: number,
+        row: number,
+        col: number,
+        wallType: WallType
+    ) => {
+        if (!mazeData || mazeData.maze_type !== 'radial_arm') return;
+
+        const arm = mazeData.arms?.[armIndex];
+        let currentVal: number | undefined;
+        if (wallType === 'vertical') {
+            currentVal = arm?.vertical_walls?.[row]?.[col];
+        } else if (wallType === 'horizontal') {
+            currentVal = arm?.horizontal_walls?.[row]?.[col];
+        }
+        if (currentVal === selectedWallElementValue) return;
+
+        const gridType = wallType === 'vertical' ? 'vertical_walls' : 'horizontal_walls';
+
+        try {
+            const { text, data } = await updateRadialArmCell(input, armIndex, row, col, selectedWallElementValue, gridType);
             setInput(text);
             setMazeData(data);
             setError(null);
@@ -193,9 +263,9 @@ export function useMaze(): UseMazeResult {
     }, [mazeData, input]);
 
     // Create a new maze
-    const create = useCallback(async (type: MazeType) => {
+    const create = useCallback(async (type: MazeType, hubType?: 'circular' | 'polygon') => {
         try {
-            const { text, data } = await createNewMaze(type);
+            const { text, data } = await createNewMaze(type, hubType);
             setInput(text);
             setMazeData(data);
             setError(null);
@@ -229,6 +299,8 @@ export function useMaze(): UseMazeResult {
         format,
         updateCell,
         updateWall,
+        updateRadialCell,
+        updateRadialWall,
         resize,
         addNewElement,
         create,

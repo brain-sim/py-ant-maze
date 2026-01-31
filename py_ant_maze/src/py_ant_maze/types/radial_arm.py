@@ -81,7 +81,6 @@ class RadialArmLayout:
             hub_mapping["radius"] = self.hub.radius
         elif self.hub.shape == "polygon":
             hub_mapping["side_length"] = self.hub.side_length
-            hub_mapping["sides"] = self.hub.sides
         arms_mapping = [_arm_to_mapping(arm, with_grid_numbers) for arm in self.arms]
         return {"center_hub": hub_mapping, "arms": arms_mapping}
 
@@ -109,13 +108,11 @@ class RadialArmHub:
         angle_degrees: float,
         radius: Optional[float] = None,
         side_length: Optional[float] = None,
-        sides: Optional[int] = None,
     ) -> None:
         self.shape = shape
         self.angle_degrees = angle_degrees
         self.radius = radius
         self.side_length = side_length
-        self.sides = sides
 
 
 def _parse_hub_spec(
@@ -148,11 +145,8 @@ def _parse_hub_spec(
             radius=radius,
         )
 
-    sides = hub_spec.get("sides", arm_count)
-    if not isinstance(sides, int) or isinstance(sides, bool) or sides < 3:
-        raise ValueError("layout.center_hub.sides must be an integer >= 3")
-    if sides != arm_count:
-        raise ValueError("layout.center_hub.sides must match the number of arms")
+    if "sides" in hub_spec:
+        raise ValueError("layout.center_hub.sides is derived from number of arms")
 
     side_length = hub_spec.get("side_length")
     min_side = max(arm_widths)
@@ -166,7 +160,6 @@ def _parse_hub_spec(
         shape="polygon",
         angle_degrees=angle_degrees,
         side_length=side_length,
-        sides=sides,
     )
 
 

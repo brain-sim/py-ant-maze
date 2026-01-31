@@ -1,7 +1,8 @@
 /**
  * MazeTypeSelector Component
  * 
- * Toggle between occupancy_grid and edge_grid maze types.
+ * Toggle between occupancy_grid, edge_grid, and radial_arm maze types.
+ * For radial_arm, allows choosing between circular and polygon hub.
  */
 
 import clsx from 'clsx';
@@ -10,11 +11,13 @@ import type { MazeType } from '../../types/maze';
 export interface MazeTypeSelectorProps {
     /** Current maze type */
     currentType?: MazeType;
+    /** Current hub shape (for radial_arm) */
+    currentHubShape?: 'circular' | 'polygon';
     /** Callback when maze type is changed */
-    onChange: (type: MazeType) => void;
+    onChange: (type: MazeType, hubType?: 'circular' | 'polygon') => void;
 }
 
-export function MazeTypeSelector({ currentType, onChange }: MazeTypeSelectorProps) {
+export function MazeTypeSelector({ currentType, currentHubShape, onChange }: MazeTypeSelectorProps) {
     return (
         <div className="flex items-center justify-between bg-slate-800/30 rounded-lg p-2 border border-white/5">
             <span className="text-xs text-slate-400">Maze Type:</span>
@@ -40,6 +43,28 @@ export function MazeTypeSelector({ currentType, onChange }: MazeTypeSelectorProp
                     )}
                 >
                     Edge
+                </button>
+                <button
+                    onClick={() => onChange('radial_arm', 'circular')}
+                    className={clsx(
+                        "px-2 py-1 text-[10px] uppercase font-bold rounded transition-colors",
+                        currentType === 'radial_arm' && currentHubShape === 'circular'
+                            ? "bg-purple-500 text-white"
+                            : "bg-black/40 text-slate-500 hover:text-white"
+                    )}
+                >
+                    Radial ○
+                </button>
+                <button
+                    onClick={() => onChange('radial_arm', 'polygon')}
+                    className={clsx(
+                        "px-2 py-1 text-[10px] uppercase font-bold rounded transition-colors",
+                        currentType === 'radial_arm' && currentHubShape === 'polygon'
+                            ? "bg-purple-500 text-white"
+                            : "bg-black/40 text-slate-500 hover:text-white"
+                    )}
+                >
+                    Radial ◇
                 </button>
             </div>
         </div>

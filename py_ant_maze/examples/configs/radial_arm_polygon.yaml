@@ -16,7 +16,6 @@ layout:
     shape: polygon
     angle_degrees: 180
     side_length: 3.0
-    sides: 3
   arms:
     - layout:
         cells: |

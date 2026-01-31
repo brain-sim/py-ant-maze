@@ -1,12 +1,15 @@
 import React from 'react';
 import clsx from 'clsx';
-import type { MazeData } from '../types/maze';
+import type { MazeData, WallType } from '../types/maze';
 import { CELL_ELEMENT_COLORS, WALL_ELEMENT_COLORS, ELEMENT_COLORS } from '../constants/defaults';
+import { RadialArmGrid } from './RadialArmGrid';
 
 interface MazeGridProps {
     data: MazeData;
     onCellClick: (row: number, col: number) => void;
-    onWallClick?: (row: number, col: number, wallType: 'vertical' | 'horizontal') => void;
+    onWallClick?: (row: number, col: number, wallType: WallType) => void;
+    onRadialCellClick?: (armIndex: number, row: number, col: number) => void;
+    onRadialWallClick?: (armIndex: number, row: number, col: number, wallType: WallType) => void;
     selectedLayer?: 'cells' | 'walls';
     className?: string;
 }
@@ -76,7 +79,15 @@ export const generateColorStyle = (name: string, layer: 'cell' | 'wall' | 'corne
     return { style: { backgroundColor: bg, color: textColor, '--hover-color': hover } as React.CSSProperties };
 };
 
-export function MazeGrid({ data, onCellClick, onWallClick, selectedLayer = 'cells', className }: MazeGridProps) {
+export function MazeGrid({
+    data,
+    onCellClick,
+    onWallClick,
+    onRadialCellClick,
+    onRadialWallClick,
+    selectedLayer = 'cells',
+    className
+}: MazeGridProps) {
     const { maze_type, grid, cells, vertical_walls, horizontal_walls, elements, wall_elements } = data;
     const [isDrawing, setIsDrawing] = React.useState(false);
 
@@ -247,6 +258,18 @@ export function MazeGrid({ data, onCellClick, onWallClick, selectedLayer = 'cell
                     });
                 })}
             </div>
+        );
+    }
+
+    if (maze_type === 'radial_arm') {
+        return (
+            <RadialArmGrid
+                data={data}
+                onCellClick={onRadialCellClick || (() => { })}
+                onWallClick={onRadialWallClick}
+                selectedLayer={selectedLayer}
+                className={className}
+            />
         );
     }
 

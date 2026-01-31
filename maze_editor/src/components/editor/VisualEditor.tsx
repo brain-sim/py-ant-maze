@@ -17,6 +17,10 @@ export interface VisualEditorProps {
     onCellClick: (row: number, col: number) => void;
     /** Callback when a wall is clicked */
     onWallClick: (row: number, col: number, wallType: WallType) => void;
+    /** Callback when a radial_arm cell is clicked */
+    onRadialCellClick?: (armIndex: number, row: number, col: number) => void;
+    /** Callback when a radial_arm wall is clicked */
+    onRadialWallClick?: (armIndex: number, row: number, col: number, wallType: WallType) => void;
     /** Currently selected layer */
     selectedLayer: LayerType;
     /** Callback to change selected layer */
@@ -37,6 +41,8 @@ export function VisualEditor({
     mazeData,
     onCellClick,
     onWallClick,
+    onRadialCellClick,
+    onRadialWallClick,
     selectedLayer,
     onLayerChange,
     selectedElementValue,
@@ -49,9 +55,18 @@ export function VisualEditor({
         return <EmptyState />;
     }
 
-    const gridData = mazeData.grid || mazeData.cells || [];
-    const rows = gridData.length;
-    const cols = gridData[0]?.length || 0;
+    // Compute grid dimensions based on maze type
+    let rows: number;
+    let cols: number;
+    if (mazeData.maze_type === 'radial_arm') {
+        rows = mazeData.arms?.length || 0;  // arm count
+        // For radial_arm, cols is the max arm length (first arm's cell row length)
+        cols = mazeData.arms?.[0]?.cells?.[0]?.length || 0;
+    } else {
+        const gridData = mazeData.grid || mazeData.cells || [];
+        rows = gridData.length;
+        cols = gridData[0]?.length || 0;
+    }
 
     const currentElements = selectedLayer === 'cells'
         ? mazeData.elements
@@ -70,7 +85,7 @@ export function VisualEditor({
             {/* Toolbar */}
             <div className="shrink-0 p-4 bg-black/20 border-b border-white/10 overflow-x-auto">
                 <div className="flex flex-col gap-3">
-                    {mazeData.maze_type === 'edge_grid' && (
+                    {(mazeData.maze_type === 'edge_grid' || mazeData.maze_type === 'radial_arm') && (
                         <LayerToggle
                             selectedLayer={selectedLayer}
                             onChange={onLayerChange}
@@ -96,6 +111,8 @@ export function VisualEditor({
                         data={mazeData}
                         onCellClick={onCellClick}
                         onWallClick={onWallClick}
+                        onRadialCellClick={onRadialCellClick}
+                        onRadialWallClick={onRadialWallClick}
                         selectedLayer={selectedLayer}
                     />
                 </div>

@@ -95,6 +95,8 @@ function App() {
             mazeData={maze.mazeData}
             onCellClick={maze.updateCell}
             onWallClick={maze.updateWall}
+            onRadialCellClick={maze.updateRadialCell}
+            onRadialWallClick={maze.updateRadialWall}
             selectedLayer={maze.selectedLayer}
             onLayerChange={maze.setSelectedLayer}
             selectedElementValue={maze.selectedElementValue}

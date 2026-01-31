@@ -91,7 +91,6 @@ Grid numbering (optional):
   - `center_hub.angle_degrees`: span of the hub (default 360)
   - `center_hub.radius`: circular hub size (must meet minimum based on sum of arm widths)
   - `center_hub.side_length`: polygon hub side length (must meet minimum based on max arm width)
-  - `center_hub.sides`: number of polygon sides (defaults to # of arms)
 - `layout.arms`: list of arm layouts (required)
   - `arm.layout.cells`: cell grid for this arm (arm_width × length)
   - `arm.layout.walls.vertical`: wall grid (arm_width × (length + 1))
