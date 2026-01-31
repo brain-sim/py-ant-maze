@@ -9,6 +9,12 @@ from .mazes import (
     EdgeGridLayout,
     RadialArmConfig,
     RadialArmLayout,
+    OccupancyGrid3DConfig,
+    OccupancyGrid3DLayout,
+    EdgeGrid3DConfig,
+    EdgeGrid3DLayout,
+    RadialArm3DConfig,
+    RadialArm3DLayout,
 )
 
 __all__ = [
@@ -23,5 +29,11 @@ __all__ = [
     "EdgeGridLayout",
     "RadialArmConfig",
     "RadialArmLayout",
+    "OccupancyGrid3DConfig",
+    "OccupancyGrid3DLayout",
+    "EdgeGrid3DConfig",
+    "EdgeGrid3DLayout",
+    "RadialArm3DConfig",
+    "RadialArm3DLayout",
 ]
 __version__ = "0.1.1"

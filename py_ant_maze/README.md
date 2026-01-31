@@ -12,9 +12,12 @@ pip install -e .
 
 | Type | Description |
 |------|-------------|
-| `occupancy_grid` | Classic blocked/open cell representation |
-| `edge_grid` | Thin walls between cells |
-| `radial_arm` | Center hub with multiple arms (each arm has its own edge-style grid) |
+| `occupancy_grid` / `occupancy_grid_2d` | Classic blocked/open cell representation |
+| `edge_grid` / `edge_grid_2d` | Thin walls between cells |
+| `radial_arm` / `radial_arm_2d` | Center hub with multiple arms (each arm has its own edge-style grid) |
+| `occupancy_grid_3d` | Multi-level occupancy grid |
+| `edge_grid_3d` | Multi-level edge grid |
+| `radial_arm_3d` | Multi-level radial arm |
 
 ## YAML Format
 
@@ -36,7 +39,7 @@ layout:
 
 ### Structure
 
-- `maze_type`: Required. One of `occupancy_grid`, `edge_grid`, or `radial_arm`
+- `maze_type`: Required. One of the 2D or 3D maze types listed above
 - `config`: Element definitions with `name`, `token`, and optional `value`
 - `layout`: Grid data using element tokens
 
@@ -101,6 +104,61 @@ Grid numbering (optional):
 - All rows must have the same number of cells
 - Tokens must match the corresponding element set
 - Whitespace is ignored when parsing tokens
+
+## 3D Layouts
+
+3D maze types use a list of levels plus optional connectors between floors.
+
+**Required cell elements (3D only)**
+- `elevator` and `escalator` must be defined in `config.cell_elements`
+
+**Level Layouts**
+- `layout.levels`: list of per-floor layouts
+- Each level entry supports `id` and `layout`
+
+**Connectors**
+- `layout.connectors`: list of connector definitions
+- `connector.type`: `elevator` or `escalator`
+- `connector.from` / `connector.to`: level + coordinates
+  - `level`: level index or id
+  - `row`, `col`: cell coordinates
+  - `arm` (radial arm only): arm index
+- Elevators must connect adjacent levels with the same coordinates
+- Escalators must connect adjacent levels with different coordinates
+
+Example (occupancy grid 3D):
+
+```yaml
+maze_type: occupancy_grid_3d
+config:
+  cell_elements:
+    - name: wall
+      token: '#'
+    - name: open
+      token: '.'
+    - name: elevator
+      token: 'E'
+    - name: escalator
+      token: 'S'
+layout:
+  levels:
+    - id: ground
+      layout:
+        grid: |
+          # # #
+          # E #
+          # # #
+    - id: upper
+      layout:
+        grid: |
+          # # #
+          # E #
+          # # #
+  connectors:
+    - type: elevator
+      from: {level: ground, row: 1, col: 1}
+      to: {level: upper, row: 1, col: 1}
+```
 
 ```python
 from py_ant_maze import Maze

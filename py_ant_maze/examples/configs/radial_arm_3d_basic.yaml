@@ -1,0 +1,75 @@
+maze_type: radial_arm_3d
+config:
+  cell_elements:
+    - name: open
+      token: '.'
+    - name: wall
+      token: '#'
+    - name: elevator
+      token: 'E'
+    - name: escalator
+      token: 'S'
+  wall_elements:
+    - name: wall
+      token: '#'
+    - name: open
+      token: '-'
+layout:
+  levels:
+    - id: ground
+      layout:
+        center_hub:
+          shape: circular
+          angle_degrees: 180
+          radius: 1.0
+        arms:
+          - layout:
+              cells: |
+                E .
+              walls:
+                vertical: |
+                  # # #
+                horizontal: |
+                  # #
+                  # #
+          - layout:
+              cells: |
+                . S
+              walls:
+                vertical: |
+                  # # #
+                horizontal: |
+                  # #
+                  # #
+    - id: upper
+      layout:
+        center_hub:
+          shape: circular
+          angle_degrees: 180
+          radius: 1.0
+        arms:
+          - layout:
+              cells: |
+                E .
+              walls:
+                vertical: |
+                  # # #
+                horizontal: |
+                  # #
+                  # #
+          - layout:
+              cells: |
+                S .
+              walls:
+                vertical: |
+                  # # #
+                horizontal: |
+                  # #
+                  # #
+  connectors:
+    - type: elevator
+      from: {level: ground, arm: 0, row: 0, col: 0}
+      to: {level: upper, arm: 0, row: 0, col: 0}
+    - type: escalator
+      from: {level: ground, arm: 1, row: 0, col: 1}
+      to: {level: upper, arm: 1, row: 0, col: 0}

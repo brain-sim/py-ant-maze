@@ -33,9 +33,10 @@ npm run dev
 
 ## Overview
 
-The **py_ant_maze** library supports two maze types:
-- **Occupancy Grid**: Classic blocked/open cell representation
-- **Edge Grid**: Thin walls between cells (vertical and horizontal walls)
+The **py_ant_maze** library supports multiple maze types:
+- **Occupancy Grid**: Classic blocked/open cell representation (2D and 3D)
+- **Edge Grid**: Thin walls between cells (2D and 3D)
+- **Radial Arm**: Center hub with multiple arms (2D and 3D)
 
 The **Maze Editor** runs in the browser using [Pyodide](https://pyodide.org/) to interface directly with the Python library.
 
