@@ -1,14 +1,24 @@
-from typing import Callable, Dict, List, Optional, Set, Iterable, Type
+from typing import Callable, Dict, Iterable, List, Optional, Set, Type, TypeAlias
 
 from .elements import MazeElement
+from .types import ElementSpecList
+
+
+ElementList: TypeAlias = List[MazeElement]
+ElementNameMap: TypeAlias = Dict[str, MazeElement]
+ElementTokenMap: TypeAlias = Dict[str, MazeElement]
+ElementValueMap: TypeAlias = Dict[int, MazeElement]
+ElementValueSet: TypeAlias = Set[int]
+ElementDefaults: TypeAlias = Dict[str, int]
+TokenWrapper: TypeAlias = Callable[[str], object]
 
 
 class ElementSet:
     def __init__(self, elements: Iterable[MazeElement]) -> None:
-        self._elements: List[MazeElement] = []
-        self._by_name: Dict[str, MazeElement] = {}
-        self._by_token: Dict[str, MazeElement] = {}
-        self._by_value: Dict[int, MazeElement] = {}
+        self._elements: ElementList = []
+        self._by_name: ElementNameMap = {}
+        self._by_token: ElementTokenMap = {}
+        self._by_value: ElementValueMap = {}
         for element in elements:
             self.add(element)
 
@@ -43,13 +53,13 @@ class ElementSet:
         except KeyError as exc:
             raise KeyError(f"unknown element value: {value}") from exc
 
-    def elements(self) -> List[MazeElement]:
+    def elements(self) -> ElementList:
         return list(self._elements)
 
     def to_list(
         self,
-        token_wrapper: Optional[Callable[[str], object]] = None,
-    ) -> List[Dict[str, object]]:
+        token_wrapper: Optional[TokenWrapper] = None,
+    ) -> ElementSpecList:
         wrap = token_wrapper or (lambda token: token)
         return [
             {"name": el.name, "token": wrap(el.token), "value": el.value}
@@ -59,9 +69,9 @@ class ElementSet:
     @classmethod
     def from_list(
         cls,
-        items: List[Dict[str, object]],
+        items: ElementSpecList,
         element_cls: Type[MazeElement],
-        reserved_defaults: Optional[Dict[str, int]] = None,
+        reserved_defaults: Optional[ElementDefaults] = None,
     ) -> "ElementSet":
         if not isinstance(items, list):
             raise TypeError("elements must be a list")
@@ -69,10 +79,10 @@ class ElementSet:
             raise ValueError("elements list cannot be empty")
 
         reserved_defaults = reserved_defaults or {}
-        parsed: List[MazeElement] = []
-        used_values: Set[int] = set()
-        explicit_values: Set[int] = set()
-        reserved_values: Dict[str, int] = {}
+        parsed: ElementList = []
+        used_values: ElementValueSet = set()
+        explicit_values: ElementValueSet = set()
+        reserved_values: ElementDefaults = {}
 
         for item in items:
             if not isinstance(item, dict):
@@ -119,7 +129,7 @@ class ElementSet:
         return cls(parsed)
 
 
-def _next_available_value(used: Set[int]) -> int:
+def _next_available_value(used: ElementValueSet) -> int:
     candidate = 0
     while candidate in used:
         candidate += 1

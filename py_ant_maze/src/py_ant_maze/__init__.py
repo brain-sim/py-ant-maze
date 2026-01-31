@@ -1,8 +1,8 @@
 """Maze definition utilities."""
 
 from .core import ElementSet, MazeElement, CellElement, WallElement
-from .io import Maze
-from .types import (
+from .maze import Maze
+from .mazes import (
     OccupancyGridConfig,
     OccupancyGridLayout,
     EdgeGridConfig,

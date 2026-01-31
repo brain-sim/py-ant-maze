@@ -1,20 +1,19 @@
-from typing import Any, List
-
 from .element_set import ElementSet
+from .types import Grid, GridLines, LayoutInput, TokenRow, TokenGrid
 
 _LARGE_GRID_THRESHOLD = 100
 _LARGE_GRID_INTERVAL = 10
 _GRID_PAD_CHAR = "_"
 
 
-def parse_grid(layout: Any, elements: ElementSet) -> List[List[int]]:
+def parse_grid(layout: LayoutInput, elements: ElementSet) -> Grid:
     lines = _layout_to_lines(layout)
     cleaned = [line.rstrip() for line in lines if str(line).strip()]
     if not cleaned:
         raise ValueError("layout is empty")
 
     has_row_separators = any("|" in line for line in cleaned)
-    rows: List[List[str]] = []
+    rows: TokenGrid = []
 
     for line in cleaned:
         if has_row_separators:
@@ -36,7 +35,7 @@ def parse_grid(layout: Any, elements: ElementSet) -> List[List[int]]:
     if width == 0:
         raise ValueError("layout must have at least one column")
 
-    grid: List[List[int]] = []
+    grid: Grid = []
     for row in rows:
         if len(row) != width:
             raise ValueError("all rows must have the same length")
@@ -53,10 +52,10 @@ def parse_grid(layout: Any, elements: ElementSet) -> List[List[int]]:
 
 
 def format_grid(
-    grid: List[List[int]],
+    grid: Grid,
     elements: ElementSet,
     with_grid_numbers: bool = False,
-) -> List[str]:
+) -> GridLines:
     token_by_value = {el.value: el.token for el in elements.elements()}
     rows = [[token_by_value[cell] for cell in row] for row in grid]
     height = len(rows)
@@ -91,7 +90,7 @@ def format_grid(
     return lines
 
 
-def _layout_to_lines(layout: Any) -> List[str]:
+def _layout_to_lines(layout: LayoutInput) -> GridLines:
     if isinstance(layout, str):
         return layout.splitlines()
     if isinstance(layout, list):
@@ -110,7 +109,7 @@ def _layout_to_lines(layout: Any) -> List[str]:
     raise TypeError("layout must be a string or list of strings")
 
 
-def _tokens_from_line(line: str) -> List[str]:
+def _tokens_from_line(line: str) -> TokenRow:
     condensed = "".join(ch for ch in line if not ch.isspace())
     if not condensed:
         raise ValueError("layout row is empty")

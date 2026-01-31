@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, TypeAlias
 
 
 class LiteralStr(str):
@@ -9,5 +9,8 @@ class QuotedStr(str):
     """Marker type for YAML quoted strings (forces single quotes)."""
 
 
-def literal_block(lines: List[str]) -> LiteralStr:
+Lines: TypeAlias = List[str]
+
+
+def literal_block(lines: Lines) -> LiteralStr:
     return LiteralStr("\n".join(lines) + "\n")
