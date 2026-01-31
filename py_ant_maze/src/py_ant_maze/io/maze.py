@@ -3,7 +3,7 @@ from typing import Any, Dict
 import yaml
 
 from .yaml_types import LiteralStr, QuotedStr
-from .registry import get_types
+from ..types.registry import get_types
 
 
 class _MazeDumper(yaml.SafeDumper):
@@ -20,6 +20,7 @@ def _quoted_str_representer(dumper: yaml.Dumper, data: QuotedStr) -> yaml.Scalar
 
 _MazeDumper.add_representer(LiteralStr, _literal_block_representer)
 _MazeDumper.add_representer(QuotedStr, _quoted_str_representer)
+
 
 class Maze:
     def __init__(self, maze_type: str, config: object, layout: object) -> None:

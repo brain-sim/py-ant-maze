@@ -1,9 +1,9 @@
 from typing import Any, Dict, List
 
-from ..element_set import ElementSet
-from ..elements import CellElement
-from ..grid import parse_grid, format_grid
-from ..yaml_types import literal_block
+from ..core.element_set import ElementSet
+from ..core.elements import CellElement
+from ..core.grid import parse_grid, format_grid
+from ..io.yaml_types import QuotedStr, literal_block
 
 
 class OccupancyGridConfig:
@@ -27,7 +27,7 @@ class OccupancyGridConfig:
         return cls(element_set)
 
     def to_mapping(self) -> Dict[str, Any]:
-        return {"cell_elements": self.cell_elements.to_list()}
+        return {"cell_elements": self.cell_elements.to_list(token_wrapper=QuotedStr)}
 
 
 class OccupancyGridLayout:

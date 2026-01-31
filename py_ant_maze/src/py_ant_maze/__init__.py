@@ -1,13 +1,14 @@
 """Maze definition utilities."""
 
-from .element_set import ElementSet
-from .elements import MazeElement, CellElement, WallElement
-from .maze import Maze
+from .core import ElementSet, MazeElement, CellElement, WallElement
+from .io import Maze
 from .types import (
     OccupancyGridConfig,
     OccupancyGridLayout,
     EdgeGridConfig,
     EdgeGridLayout,
+    RadialArmConfig,
+    RadialArmLayout,
 )
 
 __all__ = [
@@ -20,5 +21,7 @@ __all__ = [
     "OccupancyGridLayout",
     "EdgeGridConfig",
     "EdgeGridLayout",
+    "RadialArmConfig",
+    "RadialArmLayout",
 ]
 __version__ = "0.1.1"

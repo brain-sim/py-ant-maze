@@ -1,7 +1,6 @@
-from typing import Dict, List, Optional, Set, Iterable, Type
+from typing import Callable, Dict, List, Optional, Set, Iterable, Type
 
 from .elements import MazeElement
-from .yaml_types import QuotedStr
 
 
 class ElementSet:
@@ -47,9 +46,14 @@ class ElementSet:
     def elements(self) -> List[MazeElement]:
         return list(self._elements)
 
-    def to_list(self) -> List[Dict[str, object]]:
+    def to_list(
+        self,
+        token_wrapper: Optional[Callable[[str], object]] = None,
+    ) -> List[Dict[str, object]]:
+        wrap = token_wrapper or (lambda token: token)
         return [
-            {"name": el.name, "token": QuotedStr(el.token), "value": el.value} for el in self._elements
+            {"name": el.name, "token": wrap(el.token), "value": el.value}
+            for el in self._elements
         ]
 
     @classmethod

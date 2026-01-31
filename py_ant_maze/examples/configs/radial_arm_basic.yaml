@@ -1,0 +1,43 @@
+maze_type: radial_arm
+config:
+  cell_elements:
+    - name: open
+      token: "."
+      value: 0
+  wall_elements:
+    - name: wall
+      token: "#"
+      value: 1
+    - name: open
+      token: "."
+      value: 0
+layout:
+  center_hub:
+    shape: circular
+    angle_degrees: 360
+    radius: 2.0
+  arms:
+    - layout:
+        cells: |
+          . . . .
+        walls:
+          vertical: |
+            # # # # #
+          horizontal: |
+            # # # #
+            # # # #
+    - layout:
+        cells: |
+          . . . .
+          . . . .
+          . . . .
+        walls:
+          vertical: |
+            # # # # #
+            # . . . #
+            # . . . #
+          horizontal: |
+            # # # #
+            # . . #
+            # # # #
+            # # # #
