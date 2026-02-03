@@ -1,8 +1,13 @@
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
 class MazeElement:
-    def __init__(self, name: str, token: str, value: int) -> None:
-        self.name = name
-        self.token = token
-        self.value = value
+    name: str
+    token: str
+    value: int
+
+    def __post_init__(self) -> None:
         self._validate()
 
     def _validate(self) -> None:

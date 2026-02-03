@@ -8,6 +8,9 @@ export type { MazeTypeSelectorProps } from './MazeTypeSelector';
 export { GridSizeControl } from './GridSizeControl';
 export type { GridSizeControlProps } from './GridSizeControl';
 
+export { RadialArmSizeControl } from './RadialArmSizeControl';
+export type { RadialArmSizeControlProps } from './RadialArmSizeControl';
+
 export { AddElementForm } from './AddElementForm';
 export type { AddElementFormProps } from './AddElementForm';
 

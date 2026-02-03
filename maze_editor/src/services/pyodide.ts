@@ -83,7 +83,7 @@ def _extract_maze_data(maze):
             data['hub']['radius'] = hub.radius
         else:
             data['hub']['side_length'] = hub.side_length
-            data['hub']['sides'] = hub.sides
+            # Note: 'sides' is derived from arm count, don't include in data
         data['elements'] = [
             {'name': e.name, 'token': e.token, 'value': e.value}
             for e in maze.config.cell_elements.elements()
@@ -93,7 +93,6 @@ def _extract_maze_data(maze):
             for e in maze.config.wall_elements.elements()
         ]
     
-    data['config'] = maze.config.to_mapping()
     return data
 
 def _maze_to_result(maze):
@@ -155,7 +154,8 @@ export async function updateMaze(
     py.globals.set("grid_type", gridType);
 
     const jsonResult = py.runPython(`
-maze = Maze.from_text(yaml_text)
+# Use MazeDraft for mutable access
+maze = Maze.from_text(yaml_text).thaw()
 
 if maze.maze_type == 'occupancy_grid':
     maze.layout.grid[row][col] = value
@@ -167,6 +167,7 @@ elif maze.maze_type == 'edge_grid':
     elif grid_type == 'horizontal_walls':
         maze.layout.horizontal_walls[row][col] = value
 
+maze = maze.freeze()
 json.dumps(_maze_to_result(maze))
   `);
 
@@ -193,7 +194,8 @@ export async function updateRadialArmCell(
     py.globals.set("grid_type", gridType);
 
     const jsonResult = py.runPython(`
-maze = Maze.from_text(yaml_text)
+# Use MazeDraft for mutable access
+maze = Maze.from_text(yaml_text).thaw()
 
 if maze.maze_type != 'radial_arm':
     raise ValueError('updateRadialArmCell only works with radial_arm mazes')
@@ -206,6 +208,7 @@ elif grid_type == 'vertical_walls':
 elif grid_type == 'horizontal_walls':
     arm.horizontal_walls[row][col] = value
 
+maze = maze.freeze()
 json.dumps(_maze_to_result(maze))
   `);
 
@@ -228,7 +231,8 @@ export async function resizeMaze(
     py.globals.set("default_value", defaultValue);
 
     const jsonResult = py.runPython(`
-maze = Maze.from_text(yaml_text)
+# Use MazeDraft for mutable access
+maze = Maze.from_text(yaml_text).thaw()
 
 def resize_grid(grid, target_rows, target_cols, fill_value):
     current_rows = len(grid)
@@ -258,8 +262,255 @@ elif maze.maze_type == 'edge_grid':
     # horizontal: (H+1) x W
     resize_grid(maze.layout.vertical_walls, new_rows, new_cols + 1, 0)
     resize_grid(maze.layout.horizontal_walls, new_rows + 1, new_cols, 0)
-# radial_arm resize not supported - arm dimensions are per-arm
+# radial_arm resize not supported - use resizeRadialArm instead
 
+maze = maze.freeze()
+json.dumps(_maze_to_result(maze))
+  `);
+
+    return JSON.parse(jsonResult);
+}
+
+/**
+ * Resize a specific arm in a radial arm maze.
+ * Width is the number of rows (arm width), Length is the number of columns (arm length).
+ */
+export async function resizeRadialArm(
+    yamlText: string,
+    armIndex: number,
+    newWidth: number,
+    newLength: number,
+    defaultCellValue: number,
+    defaultWallValue: number
+): Promise<MazeResult> {
+    const py = await getPyodide();
+    py.globals.set("yaml_text", yamlText);
+    py.globals.set("arm_index", armIndex);
+    py.globals.set("new_width", newWidth);
+    py.globals.set("new_length", newLength);
+    py.globals.set("default_cell_value", defaultCellValue);
+    py.globals.set("default_wall_value", defaultWallValue);
+
+    const jsonResult = py.runPython(`
+# Use MazeDraft for mutable access (Maze objects are frozen)
+maze = Maze.from_text(yaml_text).thaw()
+
+def resize_grid(grid, target_rows, target_cols, fill_value):
+    current_rows = len(grid)
+    current_cols = len(grid[0]) if grid else 0
+    
+    # Adjust rows
+    if target_rows > current_rows:
+        for _ in range(target_rows - current_rows):
+            grid.append([fill_value] * current_cols)
+    elif target_rows < current_rows:
+        grid[:] = grid[:target_rows]
+        
+    # Adjust cols for each row
+    for row in grid:
+        current_row_len = len(row)
+        if target_cols > current_row_len:
+            row.extend([fill_value] * (target_cols - current_row_len))
+        elif target_cols < current_row_len:
+            row[:] = row[:target_cols]
+
+if maze.maze_type == 'radial_arm':
+    arm = maze.layout.arms[arm_index]
+    # Cells: width (rows) x length (cols)
+    resize_grid(arm.cells, new_width, new_length, default_cell_value)
+    # Vertical walls: width x (length + 1)
+    resize_grid(arm.vertical_walls, new_width, new_length + 1, default_wall_value)
+    # Horizontal walls: (width + 1) x length
+    resize_grid(arm.horizontal_walls, new_width + 1, new_length, default_wall_value)
+    
+    # Recalculate minimum hub size based on new arm widths
+    import math
+    hub = maze.layout.hub
+    arm_widths = [len(a.cells) for a in maze.layout.arms]
+    
+    if hub.shape == 'circular':
+        # Minimum radius based on max arm width - assume all arms have max width
+        # This ensures the hub can properly connect to the widest arm
+        angle_radians = math.radians(hub.angle_degrees)
+        max_width = max(arm_widths)
+        arm_count = len(arm_widths)
+        total_width = max_width * arm_count
+        min_radius = total_width / angle_radians
+        if hub.radius is None or hub.radius < min_radius:
+            hub.radius = min_radius
+    elif hub.shape == 'polygon':
+        # Minimum side_length = max arm width
+        min_side = max(arm_widths)
+        if hub.side_length is None or hub.side_length < min_side:
+            hub.side_length = float(min_side)
+
+# Freeze back to Maze for result
+maze = maze.freeze()
+json.dumps(_maze_to_result(maze))
+  `);
+
+    return JSON.parse(jsonResult);
+}
+
+
+/**
+ * Set the number of arms in a radial arm maze.
+ * Adds new arms (copying from the last arm) or removes arms from the end.
+ */
+export async function setRadialArmCount(
+    yamlText: string,
+    newCount: number,
+    defaultCellValue: number = 0,
+    defaultWallValue: number = 1
+): Promise<MazeResult> {
+    const py = await getPyodide();
+    py.globals.set("yaml_text", yamlText);
+    py.globals.set("new_count", newCount);
+    py.globals.set("default_cell_value", defaultCellValue);
+    py.globals.set("default_wall_value", defaultWallValue);
+
+    const jsonResult = py.runPython(`
+import json
+from py_ant_maze.mazes.two_d.edge_grid import EdgeGridLayout
+
+maze = Maze.from_text(yaml_text).thaw()
+
+if maze.maze_type != 'radial_arm':
+    raise ValueError("setRadialArmCount only works on radial_arm mazes")
+
+current_count = len(maze.layout.arms)
+target_count = new_count
+
+if target_count < 1:
+    raise ValueError("Must have at least 1 arm")
+
+if target_count > current_count:
+    # Add new arms - copy structure from the last existing arm
+    template_arm = maze.layout.arms[-1]
+    rows = len(template_arm.cells)
+    cols = len(template_arm.cells[0]) if template_arm.cells else 4
+    
+    for _ in range(target_count - current_count):
+        # Create new arm with same dimensions as template
+        new_cells = [[default_cell_value] * cols for _ in range(rows)]
+        new_v_walls = [[default_wall_value] * (cols + 1) for _ in range(rows)]
+        new_h_walls = [[default_wall_value] * cols for _ in range(rows + 1)]
+        
+        # Create EdgeGridLayout for the new arm
+        new_arm = EdgeGridLayout(
+            cells=new_cells,
+            vertical_walls=new_v_walls,
+            horizontal_walls=new_h_walls
+        )
+        maze.layout.arms.append(new_arm)
+        
+elif target_count < current_count:
+    # Remove arms from the end
+    maze.layout.arms = maze.layout.arms[:target_count]
+
+# Recalculate minimum hub size based on new arm count
+import math
+hub = maze.layout.hub
+arm_widths = [len(a.cells) for a in maze.layout.arms]
+
+if hub.shape == 'circular':
+    # Minimum radius based on max arm width × arm count
+    angle_radians = math.radians(hub.angle_degrees)
+    max_width = max(arm_widths)
+    arm_count = len(arm_widths)
+    total_width = max_width * arm_count
+    min_radius = total_width / angle_radians
+    if hub.radius is None or hub.radius < min_radius:
+        hub.radius = min_radius
+elif hub.shape == 'polygon':
+    # Minimum side_length = max arm width
+    min_side = max(arm_widths)
+    if hub.side_length is None or hub.side_length < min_side:
+        hub.side_length = float(min_side)
+
+# Freeze back to Maze for result
+maze = maze.freeze()
+json.dumps(_maze_to_result(maze))
+  `);
+
+    return JSON.parse(jsonResult);
+}
+
+/**
+ * Set the angle degrees (angular span) of a radial arm hub.
+ */
+export async function setRadialArmAngle(
+    yamlText: string,
+    angleDegrees: number
+): Promise<MazeResult> {
+    const py = await getPyodide();
+    py.globals.set("yaml_text", yamlText);
+    py.globals.set("angle_degrees", angleDegrees);
+
+    const jsonResult = py.runPython(`
+import json
+
+maze = Maze.from_text(yaml_text).thaw()
+
+if maze.maze_type != 'radial_arm':
+    raise ValueError("setRadialArmAngle only works on radial_arm mazes")
+
+if angle_degrees < 1 or angle_degrees > 360:
+    raise ValueError("angle_degrees must be between 1 and 360")
+
+maze.layout.hub.angle_degrees = float(angle_degrees)
+
+# Freeze back to Maze for result
+maze = maze.freeze()
+json.dumps(_maze_to_result(maze))
+  `);
+
+    return JSON.parse(jsonResult);
+}
+
+/**
+ * Set the hub size (radius for circular, side_length for polygon).
+ */
+export async function setRadialArmHubSize(
+    yamlText: string,
+    size: number
+): Promise<MazeResult> {
+    const py = await getPyodide();
+    py.globals.set("yaml_text", yamlText);
+    py.globals.set("new_size", size);
+
+    const jsonResult = py.runPython(`
+import json
+import math
+
+maze = Maze.from_text(yaml_text).thaw()
+
+if maze.maze_type != 'radial_arm':
+    raise ValueError("setRadialArmHubSize only works on radial_arm mazes")
+
+hub = maze.layout.hub
+arm_widths = [len(a.cells) for a in maze.layout.arms]
+
+if hub.shape == 'circular':
+    # Calculate minimum radius
+    angle_radians = math.radians(hub.angle_degrees)
+    max_width = max(arm_widths)
+    arm_count = len(arm_widths)
+    total_width = max_width * arm_count
+    min_radius = total_width / angle_radians
+    
+    if new_size < min_radius:
+        raise ValueError(f"Hub radius must be >= {min_radius:.2f}")
+    hub.radius = float(new_size)
+elif hub.shape == 'polygon':
+    # Minimum side_length = max arm width
+    min_side = max(arm_widths)
+    if new_size < min_side:
+        raise ValueError(f"Side length must be >= {min_side:.2f}")
+    hub.side_length = float(new_size)
+
+# Freeze back to Maze for result
+maze = maze.freeze()
 json.dumps(_maze_to_result(maze))
   `);
 

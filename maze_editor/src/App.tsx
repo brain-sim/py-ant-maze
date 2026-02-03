@@ -64,6 +64,10 @@ function App() {
             onParse={maze.parse}
             onCreate={maze.create}
             onResize={maze.resize}
+            onResizeArm={maze.resizeArm}
+            onSetArmCount={maze.setArmCount}
+            onSetAngle={maze.setAngle}
+            onSetHubSize={maze.setHubSize}
             onAddElement={maze.addNewElement}
             selectedLayer={maze.selectedLayer}
             onLayerChange={maze.setSelectedLayer}

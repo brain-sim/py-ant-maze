@@ -1,9 +1,14 @@
-from .element_set import ElementSet
-from .types import Grid, GridLines, LayoutInput, TokenRow, TokenGrid
+from typing import Union
+
+from .element_set import ElementSet, FrozenElementSet
+from ..types import FrozenGrid, Grid, GridLines, LayoutInput, TokenRow, TokenGrid
 
 _LARGE_GRID_THRESHOLD = 100
 _LARGE_GRID_INTERVAL = 10
 _GRID_PAD_CHAR = "_"
+
+
+ElementSetLike = Union[ElementSet, FrozenElementSet]
 
 
 def parse_grid(layout: LayoutInput, elements: ElementSet) -> Grid:
@@ -52,8 +57,8 @@ def parse_grid(layout: LayoutInput, elements: ElementSet) -> Grid:
 
 
 def format_grid(
-    grid: Grid,
-    elements: ElementSet,
+    grid: Union[Grid, FrozenGrid],
+    elements: ElementSetLike,
     with_grid_numbers: bool = False,
 ) -> GridLines:
     token_by_value = {el.value: el.token for el in elements.elements()}
@@ -125,3 +130,11 @@ def _looks_like_header(line: str) -> bool:
 
 def _is_pad_token(token: str) -> bool:
     return token and all(ch == _GRID_PAD_CHAR for ch in token)
+
+
+def freeze_grid(grid: Grid) -> FrozenGrid:
+    return tuple(tuple(row) for row in grid)
+
+
+def thaw_grid(grid: FrozenGrid) -> Grid:
+    return [list(row) for row in grid]

@@ -169,7 +169,6 @@ layout:
     shape: polygon
     angle_degrees: 360
     side_length: 2.0
-    sides: 4
   arms:
     - layout:
         cells: |

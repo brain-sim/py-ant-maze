@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from ..core.connectors import Connector, ConnectorLocation
-from ..core.element_set import ElementSet
+from typing import TypeAlias, Union
+
+from ...core.parsing.level_connectors import LevelConnector, LevelConnectorLocation
+from ...core.structures.element_set import ElementSet, FrozenElementSet
 
 
 REQUIRED_CELL_ELEMENTS = ("elevator", "escalator")
+ElementSetLike: TypeAlias = Union[ElementSet, FrozenElementSet]
 
 
-def ensure_required_elements(element_set: ElementSet, *, context: str) -> None:
+def ensure_required_elements(element_set: ElementSetLike, *, context: str) -> None:
     missing = [
         name
         for name in REQUIRED_CELL_ELEMENTS
@@ -18,7 +21,7 @@ def ensure_required_elements(element_set: ElementSet, *, context: str) -> None:
         raise ValueError(f"{context} must include elements: {joined}")
 
 
-def element_value(element_set: ElementSet, name: str, *, context: str) -> int:
+def element_value(element_set: ElementSetLike, name: str, *, context: str) -> int:
     for element in element_set.elements():
         if element.name.lower() == name.lower():
             return element.value
@@ -26,7 +29,7 @@ def element_value(element_set: ElementSet, name: str, *, context: str) -> int:
 
 
 def validate_connector_rules(
-    connector: Connector,
+    connector: LevelConnector,
     *,
     context: str,
 ) -> None:
@@ -44,8 +47,8 @@ def validate_connector_rules(
 
 
 def _validate_same_coordinate(
-    start: ConnectorLocation,
-    end: ConnectorLocation,
+    start: LevelConnectorLocation,
+    end: LevelConnectorLocation,
     *,
     context: str,
 ) -> None:
@@ -56,8 +59,8 @@ def _validate_same_coordinate(
 
 
 def _validate_different_coordinate(
-    start: ConnectorLocation,
-    end: ConnectorLocation,
+    start: LevelConnectorLocation,
+    end: LevelConnectorLocation,
     *,
     context: str,
 ) -> None:
@@ -65,6 +68,6 @@ def _validate_different_coordinate(
         raise ValueError(f"{context} must use different coordinates for escalator")
 
 
-def _has_element(element_set: ElementSet, name: str) -> bool:
+def _has_element(element_set: ElementSetLike, name: str) -> bool:
     target = name.lower()
     return any(element.name.lower() == target for element in element_set.elements())

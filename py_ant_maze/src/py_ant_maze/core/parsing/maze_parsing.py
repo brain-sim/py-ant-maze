@@ -1,8 +1,8 @@
 from typing import Dict, Optional, TypeAlias
 
-from .element_set import ElementSet
-from .elements import CellElement, WallElement
-from .types import ConfigSpec, Grid
+from ..structures.element_set import ElementSet
+from ..structures.elements import CellElement, WallElement
+from ..types import ConfigSpec, CellGrid, WallGrid
 
 
 ElementDefaults: TypeAlias = Dict[str, int]
@@ -40,9 +40,9 @@ def parse_wall_elements(
 
 
 def validate_edge_grid_dimensions(
-    cells: Grid,
-    vertical: Grid,
-    horizontal: Grid,
+    cells: CellGrid,
+    vertical: WallGrid,
+    horizontal: WallGrid,
     *,
     context: str,
 ) -> None:

@@ -1,10 +1,12 @@
-from typing import Callable, Dict, Iterable, List, Optional, Set, Type, TypeAlias
+from types import MappingProxyType
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Type, TypeAlias
 
 from .elements import MazeElement
-from .types import ElementSpecList
+from ..types import ElementSpecList
 
 
 ElementList: TypeAlias = List[MazeElement]
+FrozenElementList: TypeAlias = Tuple[MazeElement, ...]
 ElementNameMap: TypeAlias = Dict[str, MazeElement]
 ElementTokenMap: TypeAlias = Dict[str, MazeElement]
 ElementValueMap: TypeAlias = Dict[int, MazeElement]
@@ -55,6 +57,9 @@ class ElementSet:
 
     def elements(self) -> ElementList:
         return list(self._elements)
+
+    def freeze(self) -> "FrozenElementSet":
+        return FrozenElementSet(self._elements)
 
     def to_list(
         self,
@@ -134,3 +139,46 @@ def _next_available_value(used: ElementValueSet) -> int:
     while candidate in used:
         candidate += 1
     return candidate
+
+
+class FrozenElementSet:
+    def __init__(self, elements: Iterable[MazeElement]) -> None:
+        elements_tuple = tuple(elements)
+        self._elements: FrozenElementList = elements_tuple
+        self._by_name = MappingProxyType({el.name: el for el in elements_tuple})
+        self._by_token = MappingProxyType({el.token: el for el in elements_tuple})
+        self._by_value = MappingProxyType({el.value: el for el in elements_tuple})
+
+    def element(self, name: str) -> MazeElement:
+        try:
+            return self._by_name[name]
+        except KeyError as exc:
+            raise KeyError(f"unknown element name: {name}") from exc
+
+    def element_for_token(self, token: str) -> MazeElement:
+        try:
+            return self._by_token[token]
+        except KeyError as exc:
+            raise KeyError(f"unknown element token: {token}") from exc
+
+    def element_for_value(self, value: int) -> MazeElement:
+        try:
+            return self._by_value[value]
+        except KeyError as exc:
+            raise KeyError(f"unknown element value: {value}") from exc
+
+    def elements(self) -> FrozenElementList:
+        return self._elements
+
+    def to_list(
+        self,
+        token_wrapper: Optional[TokenWrapper] = None,
+    ) -> ElementSpecList:
+        wrap = token_wrapper or (lambda token: token)
+        return [
+            {"name": el.name, "token": wrap(el.token), "value": el.value}
+            for el in self._elements
+        ]
+
+    def thaw(self) -> ElementSet:
+        return ElementSet(self._elements)

@@ -8,6 +8,7 @@ import { RefreshCw, Play, Upload, Download, Image as ImageIcon, FileText, AlertC
 import type { MazeData, MazeType, LayerType, ElementType } from '../../types/maze';
 import { MazeTypeSelector } from '../controls/MazeTypeSelector';
 import { GridSizeControl } from '../controls/GridSizeControl';
+import { RadialArmSizeControl } from '../controls/RadialArmSizeControl';
 import { AddElementForm } from '../controls/AddElementForm';
 
 export interface CodePanelProps {
@@ -23,8 +24,16 @@ export interface CodePanelProps {
     onParse: () => void;
     /** Callback to create new maze */
     onCreate: (type: MazeType, hubType?: 'circular' | 'polygon') => void;
-    /** Callback to resize maze */
+    /** Callback to resize maze (occupancy_grid and edge_grid) */
     onResize: (rows: number, cols: number) => void;
+    /** Callback to resize a specific arm (radial_arm only) */
+    onResizeArm: (armIndex: number, width: number, length: number) => void;
+    /** Callback to set number of arms (radial_arm only) */
+    onSetArmCount?: (count: number) => void;
+    /** Callback to set hub angle degrees (radial_arm only) */
+    onSetAngle?: (degrees: number) => void;
+    /** Callback to set hub size (radial_arm only) */
+    onSetHubSize?: (size: number) => void;
     /** Callback to add element */
     onAddElement: (name: string, token: string, type: ElementType) => void;
     /** Current layer selection */
@@ -53,6 +62,10 @@ export function CodePanel({
     onParse,
     onCreate,
     onResize,
+    onResizeArm,
+    onSetArmCount,
+    onSetAngle,
+    onSetHubSize,
     onAddElement,
     selectedLayer,
     onLayerChange,
@@ -115,12 +128,25 @@ export function CodePanel({
                     onChange={onCreate}
                 />
 
-                {/* Resize Controls */}
-                {mazeData && (
+                {/* Resize Controls - conditional based on maze type */}
+                {mazeData && mazeData.maze_type !== 'radial_arm' && (
                     <GridSizeControl
                         rows={rows}
                         cols={cols}
                         onResize={onResize}
+                    />
+                )}
+                {mazeData && mazeData.maze_type === 'radial_arm' && mazeData.arms && (
+                    <RadialArmSizeControl
+                        arms={mazeData.arms}
+                        angleDegrees={mazeData.hub?.angle_degrees}
+                        hubShape={mazeData.hub?.shape}
+                        hubRadius={mazeData.hub?.radius}
+                        hubSideLength={mazeData.hub?.side_length}
+                        onResizeArm={onResizeArm}
+                        onSetArmCount={onSetArmCount}
+                        onSetAngle={onSetAngle}
+                        onSetHubSize={onSetHubSize}
                     />
                 )}
 

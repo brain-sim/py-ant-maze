@@ -7,7 +7,7 @@ from .multi_level import LevelDefinition, resolve_level
 
 
 @dataclass(frozen=True)
-class ConnectorLocation:
+class LevelConnectorLocation:
     level: LevelDefinition
     row: int
     col: int
@@ -15,26 +15,26 @@ class ConnectorLocation:
 
 
 @dataclass(frozen=True)
-class Connector:
+class LevelConnector:
     kind: str
-    start: ConnectorLocation
-    end: ConnectorLocation
+    start: LevelConnectorLocation
+    end: LevelConnectorLocation
 
 
-def parse_connectors(
+def parse_level_connectors(
     connectors_spec: Any,
     *,
     levels: Sequence[LevelDefinition],
     context: str,
     allow_arm: bool = False,
     require_arm: bool = False,
-) -> List[Connector]:
+) -> List[LevelConnector]:
     if connectors_spec is None:
         return []
     if not isinstance(connectors_spec, list):
         raise TypeError(f"{context} must be a list")
 
-    connectors: List[Connector] = []
+    connectors: List[LevelConnector] = []
     for index, entry in enumerate(connectors_spec):
         entry_context = f"{context}[{index}]"
         if not isinstance(entry, dict):
@@ -63,22 +63,22 @@ def parse_connectors(
             allow_arm=allow_arm,
             require_arm=require_arm,
         )
-        connectors.append(Connector(kind=kind, start=start, end=end))
+        connectors.append(LevelConnector(kind=kind, start=start, end=end))
     return connectors
 
 
-def connectors_to_spec(connectors: Sequence[Connector]) -> List[Dict[str, Any]]:
+def level_connectors_to_spec(connectors: Sequence[LevelConnector]) -> List[Dict[str, Any]]:
     return [
         {
             "type": connector.kind,
-            "from": location_to_spec(connector.start),
-            "to": location_to_spec(connector.end),
+            "from": level_connector_location_to_spec(connector.start),
+            "to": level_connector_location_to_spec(connector.end),
         }
         for connector in connectors
     ]
 
 
-def location_to_spec(location: ConnectorLocation) -> Dict[str, Any]:
+def level_connector_location_to_spec(location: LevelConnectorLocation) -> Dict[str, Any]:
     spec: Dict[str, Any] = {
         "level": location.level.name,
         "row": location.row,
@@ -96,7 +96,7 @@ def _parse_location(
     context: str,
     allow_arm: bool,
     require_arm: bool,
-) -> ConnectorLocation:
+) -> LevelConnectorLocation:
     if not isinstance(spec, dict):
         raise TypeError(f"{context} must be a mapping")
     if "level" not in spec:
@@ -116,7 +116,7 @@ def _parse_location(
             raise ValueError(f"{context}.arm is not allowed")
         arm = _parse_non_negative_int(arm_value, f"{context}.arm")
 
-    return ConnectorLocation(level=level, row=row, col=col, arm=arm)
+    return LevelConnectorLocation(level=level, row=row, col=col, arm=arm)
 
 
 def _parse_non_negative_int(value: Any, field: str) -> int:

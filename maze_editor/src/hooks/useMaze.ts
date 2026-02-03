@@ -13,6 +13,10 @@ import {
     updateMaze,
     updateRadialArmCell,
     resizeMaze,
+    resizeRadialArm,
+    setRadialArmCount,
+    setRadialArmAngle,
+    setRadialArmHubSize,
     addElement,
     createNewMaze,
 } from '../services/pyodide';
@@ -58,6 +62,14 @@ export interface UseMazeActions {
     updateRadialWall: (armIndex: number, row: number, col: number, wallType: WallType) => Promise<void>;
     /** Resize the maze grid */
     resize: (rows: number, cols: number) => Promise<void>;
+    /** Resize a specific arm in radial_arm maze */
+    resizeArm: (armIndex: number, width: number, length: number) => Promise<void>;
+    /** Set the number of arms in radial_arm maze */
+    setArmCount: (count: number) => Promise<void>;
+    /** Set the hub angle degrees in radial_arm maze */
+    setAngle: (degrees: number) => Promise<void>;
+    /** Set the hub size (radius or side_length) in radial_arm maze */
+    setHubSize: (size: number) => Promise<void>;
     /** Add a new element */
     addNewElement: (name: string, token: string, type: ElementType) => Promise<void>;
     /** Create a new maze of the specified type */
@@ -239,6 +251,73 @@ export function useMaze(): UseMazeResult {
         }
     }, [mazeData, input, selectedElementValue]);
 
+    // Resize a specific arm in radial_arm maze
+    const resizeArm = useCallback(async (armIndex: number, width: number, length: number) => {
+        if (!mazeData || mazeData.maze_type !== 'radial_arm') return;
+
+        try {
+            const { text, data } = await resizeRadialArm(
+                input, armIndex, width, length,
+                selectedElementValue,
+                selectedWallElementValue
+            );
+            setInput(text);
+            setMazeData(data);
+            setError(null);
+        } catch (err) {
+            setError(String(err));
+        }
+    }, [mazeData, input, selectedElementValue, selectedWallElementValue]);
+
+    // Set the number of arms in radial_arm maze
+    const setArmCount = useCallback(async (count: number) => {
+        if (!mazeData || mazeData.maze_type !== 'radial_arm') return;
+        if (count < 1) return;
+
+        try {
+            const { text, data } = await setRadialArmCount(
+                input, count,
+                selectedElementValue,
+                selectedWallElementValue
+            );
+            setInput(text);
+            setMazeData(data);
+            setError(null);
+        } catch (err) {
+            setError(String(err));
+        }
+    }, [mazeData, input, selectedElementValue, selectedWallElementValue]);
+
+    // Set the hub angle degrees in radial_arm maze
+    const setAngle = useCallback(async (degrees: number) => {
+        if (!mazeData || mazeData.maze_type !== 'radial_arm') return;
+        if (degrees < 1 || degrees > 360) return;
+
+        try {
+            const { text, data } = await setRadialArmAngle(input, degrees);
+            setInput(text);
+            setMazeData(data);
+            setError(null);
+        } catch (err) {
+            setError(String(err));
+        }
+    }, [mazeData, input]);
+
+    // Set the hub size (radius or side_length) in radial_arm maze
+    const setHubSize = useCallback(async (size: number) => {
+        if (!mazeData || mazeData.maze_type !== 'radial_arm') return;
+        if (size <= 0) return;
+
+        try {
+            const { text, data } = await setRadialArmHubSize(input, size);
+            setInput(text);
+            setMazeData(data);
+            setError(null);
+        } catch (err) {
+            setError(String(err));
+        }
+    }, [mazeData, input]);
+
     // Add a new element
     const addNewElement = useCallback(async (
         name: string,
@@ -302,6 +381,10 @@ export function useMaze(): UseMazeResult {
         updateRadialCell,
         updateRadialWall,
         resize,
+        resizeArm,
+        setArmCount,
+        setAngle,
+        setHubSize,
         addNewElement,
         create,
         clearError,

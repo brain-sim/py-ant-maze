@@ -1,3 +1,4 @@
+import copy
 from typing import Any
 
 import yaml
@@ -23,11 +24,12 @@ _MazeDumper.add_representer(QuotedStr, _quoted_str_representer)
 
 
 def dump_yaml(mapping: Spec) -> str:
-    _wrap_config_tokens(mapping)
-    layout_mapping = mapping.get("layout")
+    data = copy.deepcopy(mapping)
+    _wrap_config_tokens(data)
+    layout_mapping = data.get("layout")
     if isinstance(layout_mapping, dict):
         _wrap_multiline_strings(layout_mapping)
-    return yaml.dump(mapping, Dumper=_MazeDumper, sort_keys=False, default_flow_style=False)
+    return yaml.dump(data, Dumper=_MazeDumper, sort_keys=False, default_flow_style=False)
 
 
 def _wrap_config_tokens(mapping: Spec) -> None:

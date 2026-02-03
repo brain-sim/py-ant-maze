@@ -64,13 +64,23 @@ export function RadialArmGrid({
     const maxArmLength = Math.max(...arms.map(arm => arm.cells[0]?.length || 0));
 
     // Hub radius calculation (in cell units, convert to pixels)
+    // For circular: hubRadius = hubApothem (same distance)
+    // For polygon: hubRadius = circumradius (to vertices), hubApothem = distance to side midpoints
     let hubRadius: number;
+    let hubApothem: number;  // Distance from center to midpoint of polygon side (where arms connect)
     if (hub.shape === 'circular') {
         hubRadius = (hub.radius || 2) * cellSize;
+        hubApothem = hubRadius;  // For circles, radius = apothem
     } else {
         const sideLength = (hub.side_length || 2) * cellSize;
         const sides = hub.sides || armCount;
-        hubRadius = sideLength / (2 * Math.sin(Math.PI / sides));
+        // For polygon, sides are distributed across angleSpan (not full 360°)
+        // Each side covers angleStep = angleSpan / sides
+        // Circumradius formula: R = sideLength / (2 * sin(angleStep/2))
+        const halfAngleStep = angleSpan / sides / 2;
+        hubRadius = sideLength / (2 * Math.sin(halfAngleStep));
+        // Apothem (distance from center to midpoint of side) = R * cos(halfAngleStep)
+        hubApothem = hubRadius * Math.cos(halfAngleStep);
     }
 
     // Total size: hub + largest arm extending outward + padding
@@ -181,24 +191,57 @@ export function RadialArmGrid({
                 );
             }
         } else {
-            // Polygon hub
+            // Polygon hub - sides should align with arms, not vertices
+            // Each arm points at the center of a polygon side (edge), not at a vertex
+            // All sides are distributed across the angleSpan (arc shape when < 360°)
             const sides = hub.sides || armCount;
-            const polygonAngleStep = (2 * Math.PI) / sides;
-            const points: string[] = [];
-            for (let i = 0; i < sides; i++) {
-                const angle = startAngle + i * polygonAngleStep + polygonAngleStep / 2;
-                const x = center + hubRadius * Math.cos(angle);
-                const y = center + hubRadius * Math.sin(angle);
-                points.push(`${x},${y}`);
+            const angleStep = angleSpan / sides;
+
+            if (hub.angle_degrees >= 360) {
+                // Full polygon - draw as closed shape
+                const points: string[] = [];
+                for (let i = 0; i < sides; i++) {
+                    const angle = startAngle + i * angleStep;
+                    const x = center + hubRadius * Math.cos(angle);
+                    const y = center + hubRadius * Math.sin(angle);
+                    points.push(`${x},${y}`);
+                }
+                return (
+                    <polygon
+                        points={points.join(' ')}
+                        fill={openSpaceColor}
+                        stroke="#cbd5e1"
+                        strokeWidth={1}
+                    />
+                );
+            } else {
+                // Partial polygon arc - draw all sides within the angleSpan
+                // Need sides + 1 vertices to draw all sides (each side connects 2 vertices)
+                const pathParts: string[] = [];
+
+                // Start from center
+                pathParts.push(`M ${center} ${center}`);
+
+                // Add all vertices for the polygon sides
+                for (let i = 0; i <= sides; i++) {
+                    const angle = startAngle + i * angleStep;
+                    const x = center + hubRadius * Math.cos(angle);
+                    const y = center + hubRadius * Math.sin(angle);
+                    pathParts.push(`L ${x} ${y}`);
+                }
+
+                // Close path back to center
+                pathParts.push('Z');
+
+                return (
+                    <path
+                        d={pathParts.join(' ')}
+                        fill={openSpaceColor}
+                        stroke="#cbd5e1"
+                        strokeWidth={1}
+                    />
+                );
             }
-            return (
-                <polygon
-                    points={points.join(' ')}
-                    fill={openSpaceColor}
-                    stroke="#cbd5e1"
-                    strokeWidth={1}
-                />
-            );
         }
     };
 
@@ -326,8 +369,23 @@ export function RadialArmGrid({
 
         // Transform: position at hub edge, rotate to point outward
         // The arm's origin (0,0) should be at the hub edge
-        const hubEdgeX = center + hubRadius * Math.cos(armAngle);
-        const hubEdgeY = center + hubRadius * Math.sin(armAngle);
+        // For circular hubs: position arm so its corners touch the circle
+        // For polygon hubs: use hubApothem (distance to side midpoint)
+        let armCenterDistance: number;
+        if (hub.shape === 'circular') {
+            // For arm corners to touch circle of radius R, with arm half-width W/2:
+            // Corner distance from center = sqrt(D² + (W/2)²) = R
+            // Solving: D = sqrt(R² - (W/2)²)
+            const halfWidth = (armWidth * cellSize) / 2;
+            const radiusSquared = hubRadius * hubRadius;
+            const halfWidthSquared = halfWidth * halfWidth;
+            // Clamp to ensure we don't get negative under sqrt (when arm is too wide)
+            armCenterDistance = Math.sqrt(Math.max(0, radiusSquared - halfWidthSquared));
+        } else {
+            armCenterDistance = hubApothem;
+        }
+        const hubEdgeX = center + armCenterDistance * Math.cos(armAngle);
+        const hubEdgeY = center + armCenterDistance * Math.sin(armAngle);
 
         // Rotation: arm's local +Y axis should point OUTWARD from hub center
         // In SVG default, +Y points down. We need +Y to point in armAngle direction (away from center).

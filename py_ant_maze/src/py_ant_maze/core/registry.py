@@ -1,35 +1,40 @@
-from typing import Dict, Tuple, Type, TypeAlias
+from __future__ import annotations
 
-from ..mazes.occupancy_grid import OccupancyGridConfig, OccupancyGridLayout
-from ..mazes.edge_grid import EdgeGridConfig, EdgeGridLayout
-from ..mazes.radial_arm import RadialArmConfig, RadialArmLayout
-from ..mazes.occupancy_grid_3d import OccupancyGrid3DConfig, OccupancyGrid3DLayout
-from ..mazes.edge_grid_3d import EdgeGrid3DConfig, EdgeGrid3DLayout
-from ..mazes.radial_arm_3d import RadialArm3DConfig, RadialArm3DLayout
+from typing import Dict
+
+from .handlers import MazeTypeHandler
 from .types import MazeType
 
 
-ConfigType = Type[object]
-LayoutType = Type[object]
-MazeTypes: TypeAlias = Tuple[ConfigType, LayoutType]
-MazeRegistry: TypeAlias = Dict[MazeType, MazeTypes]
+_REGISTRY: Dict[MazeType, MazeTypeHandler] = {}
+_ALIASES: Dict[MazeType, MazeType] = {}
 
 
-MAZE_REGISTRY: MazeRegistry = {
-    "occupancy_grid": (OccupancyGridConfig, OccupancyGridLayout),
-    "edge_grid": (EdgeGridConfig, EdgeGridLayout),
-    "radial_arm": (RadialArmConfig, RadialArmLayout),
-    "occupancy_grid_2d": (OccupancyGridConfig, OccupancyGridLayout),
-    "edge_grid_2d": (EdgeGridConfig, EdgeGridLayout),
-    "radial_arm_2d": (RadialArmConfig, RadialArmLayout),
-    "occupancy_grid_3d": (OccupancyGrid3DConfig, OccupancyGrid3DLayout),
-    "edge_grid_3d": (EdgeGrid3DConfig, EdgeGrid3DLayout),
-    "radial_arm_3d": (RadialArm3DConfig, RadialArm3DLayout),
-}
+def register_handler(handler: MazeTypeHandler) -> None:
+    if handler.maze_type in _REGISTRY:
+        raise ValueError(f"maze_type already registered: {handler.maze_type}")
+    _REGISTRY[handler.maze_type] = handler
+
+    for alias in handler.aliases:
+        if alias in _REGISTRY or alias in _ALIASES:
+            raise ValueError(f"maze_type alias already registered: {alias}")
+        _ALIASES[alias] = handler.maze_type
 
 
-def get_types(maze_type: MazeType) -> MazeTypes:
+def get_handler(maze_type: MazeType) -> MazeTypeHandler:
+    if not _REGISTRY:
+        register_default_handlers()
+    canonical = _ALIASES.get(maze_type, maze_type)
     try:
-        return MAZE_REGISTRY[maze_type]
+        return _REGISTRY[canonical]
     except KeyError as exc:
         raise KeyError(f"unknown maze_type: {maze_type}") from exc
+
+
+def register_default_handlers() -> None:
+    if _REGISTRY:
+        return
+    from ..mazes import HANDLERS
+
+    for handler in HANDLERS:
+        register_handler(handler)

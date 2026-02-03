@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Sequence, Tuple, Union
+from typing import Any, List, Sequence, Tuple, Union
 
-from .types import LayoutSpec, LayoutInput
+from ..types import LayoutInput
 
 
 LevelIdentifier = Union[str, int]
@@ -73,12 +73,3 @@ def resolve_level(
                 return level
         raise ValueError(f"{context}.level unknown identifier: {identifier}")
     raise TypeError(f"{context}.level must be a string or integer")
-
-
-def connectors_mapping(spec: LayoutSpec, *, context: str) -> Dict[str, Any]:
-    connectors = spec.get("connectors", {})
-    if connectors is None:
-        connectors = {}
-    if not isinstance(connectors, dict):
-        raise TypeError(f"{context}.connectors must be a mapping")
-    return connectors
