@@ -2,12 +2,15 @@
  * VisualEditor Component
  * 
  * Main visual editing area with the maze grid and element palette.
+ * Supports both 2D and 3D mazes with level selection.
  */
 
-import type { MazeData, LayerType, WallType } from '../../types/maze';
+import type { MazeData, LayerType, WallType, LevelData } from '../../types/maze';
+import { is3DMazeType } from '../../types/maze';
 import { MazeGrid } from '../MazeGrid';
 import { ElementPalette } from '../controls/ElementPalette';
 import { LayerToggle } from '../controls/LayerToggle';
+import { LevelSelector } from '../controls/LevelSelector';
 import { EmptyState } from './EmptyState';
 
 export interface VisualEditorProps {
@@ -35,6 +38,10 @@ export interface VisualEditorProps {
     onSelectWallElement: (value: number) => void;
     /** Ref for the grid container (for image export) */
     gridRef: React.RefObject<HTMLDivElement>;
+    /** Currently selected level index (for 3D mazes) */
+    selectedLevelIndex?: number;
+    /** Callback to change selected level */
+    onLevelChange?: (index: number) => void;
 }
 
 export function VisualEditor({
@@ -50,23 +57,48 @@ export function VisualEditor({
     selectedWallElementValue,
     onSelectWallElement,
     gridRef,
+    selectedLevelIndex = 0,
+    onLevelChange,
 }: VisualEditorProps) {
     if (!mazeData) {
         return <EmptyState />;
     }
 
+    const is3D = is3DMazeType(mazeData.maze_type);
+    const levels = mazeData.levels || [];
+    const currentLevel: LevelData | undefined = is3D ? levels[selectedLevelIndex] : undefined;
+
+    // Create a "virtual" 2D MazeData for the grid from the current level
+    // This allows MazeGrid to render the level without knowing about 3D structure
+    const mazeDataForGrid: MazeData = is3D && currentLevel
+        ? {
+            ...mazeData,
+            // Flatten level data into top-level fields for grid rendering
+            grid: currentLevel.grid,
+            cells: currentLevel.cells,
+            vertical_walls: currentLevel.vertical_walls,
+            horizontal_walls: currentLevel.horizontal_walls,
+            arms: currentLevel.arms,
+        }
+        : mazeData;
+
     // Compute grid dimensions based on maze type
     let rows: number;
     let cols: number;
-    if (mazeData.maze_type === 'radial_arm') {
-        rows = mazeData.arms?.length || 0;  // arm count
-        // For radial_arm, cols is the max arm length (first arm's cell row length)
-        cols = mazeData.arms?.[0]?.cells?.[0]?.length || 0;
+    const baseType = is3D ? mazeData.maze_type.replace('_3d', '') : mazeData.maze_type;
+
+    if (baseType === 'radial_arm') {
+        const arms = mazeDataForGrid.arms || [];
+        rows = arms?.length || 0;  // arm count
+        cols = arms?.[0]?.cells?.[0]?.length || 0;
     } else {
-        const gridData = mazeData.grid || mazeData.cells || [];
+        const gridData = mazeDataForGrid.grid || mazeDataForGrid.cells || [];
         rows = gridData.length;
         cols = gridData[0]?.length || 0;
     }
+
+    // Determine if layer toggle should be shown
+    const showLayerToggle = baseType === 'edge_grid' || baseType === 'radial_arm';
 
     const currentElements = selectedLayer === 'cells'
         ? mazeData.elements
@@ -85,7 +117,16 @@ export function VisualEditor({
             {/* Toolbar */}
             <div className="shrink-0 p-4 bg-black/20 border-b border-white/10 overflow-x-auto">
                 <div className="flex flex-col gap-3">
-                    {(mazeData.maze_type === 'edge_grid' || mazeData.maze_type === 'radial_arm') && (
+                    {/* Level Selector (only for 3D mazes) */}
+                    {is3D && levels.length > 0 && onLevelChange && (
+                        <LevelSelector
+                            levels={levels}
+                            selectedIndex={selectedLevelIndex}
+                            onSelect={onLevelChange}
+                        />
+                    )}
+
+                    {showLayerToggle && (
                         <LayerToggle
                             selectedLayer={selectedLayer}
                             onChange={onLayerChange}
@@ -108,7 +149,7 @@ export function VisualEditor({
                     className="max-w-full max-h-full overflow-auto bg-slate-800/50 p-2 rounded-2xl shadow-2xl border border-white/10 backdrop-blur-sm"
                 >
                     <MazeGrid
-                        data={mazeData}
+                        data={mazeDataForGrid}
                         onCellClick={onCellClick}
                         onWallClick={onWallClick}
                         onRadialCellClick={onRadialCellClick}
@@ -121,6 +162,7 @@ export function VisualEditor({
             {/* Footer Hint */}
             <div className="shrink-0 px-4 py-2 text-center text-xs text-slate-500 border-t border-white/5 bg-slate-900/80">
                 Click cells/walls to paint • Grid: {rows} × {cols}
+                {is3D && currentLevel && <span className="ml-2">• Level: {currentLevel.id}</span>}
             </div>
         </>
     );

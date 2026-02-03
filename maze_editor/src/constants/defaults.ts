@@ -207,3 +207,208 @@ layout:
             # # # #
             # # # #
 `;
+
+/** Default YAML for a new 3D occupancy grid maze */
+export const DEFAULT_OCCUPANCY_GRID_3D_YAML = `maze_type: occupancy_grid_3d
+config:
+  cell_elements:
+    - name: open
+      token: '.'
+    - name: wall
+      token: '#'
+    - name: elevator
+      token: 'E'
+    - name: escalator
+      token: 'S'
+layout:
+  levels:
+    - id: ground
+      layout:
+        grid: |
+          # # # # #
+          # . E . #
+          # . . . #
+          # S . . #
+          # # # # #
+    - id: upper
+      layout:
+        grid: |
+          # # # # #
+          # . E . #
+          # . . . #
+          # . . S #
+          # # # # #
+  connectors:
+    - type: elevator
+      from: {level: ground, row: 1, col: 2}
+      to: {level: upper, row: 1, col: 2}
+    - type: escalator
+      from: {level: ground, row: 3, col: 1}
+      to: {level: upper, row: 3, col: 3}
+`;
+
+/** Default YAML for a new 3D edge grid maze */
+export const DEFAULT_EDGE_GRID_3D_YAML = `maze_type: edge_grid_3d
+config:
+  cell_elements:
+    - name: open
+      token: '.'
+    - name: elevator
+      token: 'E'
+    - name: escalator
+      token: 'S'
+  wall_elements:
+    - name: wall
+      token: '#'
+    - name: open
+      token: '-'
+layout:
+  levels:
+    - id: ground
+      layout:
+        cells: |
+          E S . .
+          . . . .
+          . . . .
+        walls:
+          vertical: |
+            # # # # #
+            # # # # #
+            # # # # #
+          horizontal: |
+            # # # #
+            # # # #
+            # # # #
+            # # # #
+    - id: upper
+      layout:
+        cells: |
+          E . . .
+          S . . .
+          . . . .
+        walls:
+          vertical: |
+            # # # # #
+            # # # # #
+            # # # # #
+          horizontal: |
+            # # # #
+            # # # #
+            # # # #
+            # # # #
+  connectors:
+    - type: elevator
+      from: {level: ground, row: 0, col: 0}
+      to: {level: upper, row: 0, col: 0}
+    - type: escalator
+      from: {level: ground, row: 0, col: 1}
+      to: {level: upper, row: 1, col: 0}
+`;
+
+/** Default YAML for a new 3D radial arm maze */
+export const DEFAULT_RADIAL_ARM_3D_YAML = `maze_type: radial_arm_3d
+config:
+  cell_elements:
+    - name: open
+      token: '.'
+    - name: elevator
+      token: 'E'
+    - name: escalator
+      token: 'S'
+  wall_elements:
+    - name: wall
+      token: '#'
+    - name: open
+      token: '-'
+layout:
+  center_hub:
+    shape: polygon
+    angle_degrees: 360
+    side_length: 2.0
+  levels:
+    - id: ground
+      layout:
+        arms:
+          - layout:
+              cells: |
+                E . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+          - layout:
+              cells: |
+                . . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+          - layout:
+              cells: |
+                . S . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+          - layout:
+              cells: |
+                . . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+    - id: upper
+      layout:
+        arms:
+          - layout:
+              cells: |
+                E . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+          - layout:
+              cells: |
+                . . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+          - layout:
+              cells: |
+                S . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+          - layout:
+              cells: |
+                . . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+  connectors:
+    - type: elevator
+      from: {level: ground, row: 0, col: 0, arm: 0}
+      to: {level: upper, row: 0, col: 0, arm: 0}
+    - type: escalator
+      from: {level: ground, row: 0, col: 1, arm: 2}
+      to: {level: upper, row: 0, col: 0, arm: 2}
+`;

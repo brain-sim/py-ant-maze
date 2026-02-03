@@ -11,12 +11,17 @@ export interface GridSizeControlProps {
     cols: number;
     /** Callback when size changes */
     onResize: (rows: number, cols: number) => void;
+    /** Whether this is for a 3D maze (shows hint that resize applies per level) */
+    is3D?: boolean;
 }
 
-export function GridSizeControl({ rows, cols, onResize }: GridSizeControlProps) {
+export function GridSizeControl({ rows, cols, onResize, is3D }: GridSizeControlProps) {
     return (
         <div className="flex items-center justify-between bg-slate-800/30 rounded-lg p-2 border border-white/5">
-            <span className="text-xs text-slate-400">Grid Size:</span>
+            <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Grid Size:</span>
+                {is3D && <span className="text-[10px] text-slate-500 italic">(per level)</span>}
+            </div>
             <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
                     <span className="text-[10px] text-slate-500 uppercase tracking-wider">Rows</span>

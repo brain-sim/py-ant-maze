@@ -7,7 +7,15 @@
 
 import { loadPyodide, type PyodideInterface } from "pyodide";
 import type { MazeData, MazeResult, GridType, ElementType, MazeType } from "../types/maze";
-import { DEFAULT_OCCUPANCY_YAML, DEFAULT_EDGE_YAML, DEFAULT_RADIAL_ARM_YAML, DEFAULT_RADIAL_ARM_POLYGON_YAML } from "../constants/defaults";
+import {
+    DEFAULT_OCCUPANCY_YAML,
+    DEFAULT_EDGE_YAML,
+    DEFAULT_RADIAL_ARM_YAML,
+    DEFAULT_RADIAL_ARM_POLYGON_YAML,
+    DEFAULT_OCCUPANCY_GRID_3D_YAML,
+    DEFAULT_EDGE_GRID_3D_YAML,
+    DEFAULT_RADIAL_ARM_3D_YAML,
+} from "../constants/defaults";
 
 // Re-export types for convenience
 export type { MazeData, MazeResult };
@@ -42,11 +50,98 @@ import json
 import yaml
 from py_ant_maze import Maze
 
+def _extract_level_layout(level, maze_type):
+    """Extract layout data from a single level based on base maze type."""
+    level_data = {
+        'id': level.definition.name,
+        'index': level.definition.index,
+    }
+    
+    if 'occupancy_grid' in maze_type:
+        level_data['grid'] = level.layout.grid
+    elif 'edge_grid' in maze_type:
+        layout = level.layout
+        level_data['cells'] = layout.cells
+        level_data['vertical_walls'] = layout.vertical_walls
+        level_data['horizontal_walls'] = layout.horizontal_walls
+    elif 'radial_arm' in maze_type:
+        # For radial_arm_3d, level has arms directly (no layout wrapper)
+        arms_data = []
+        for arm in level.arms:
+            arms_data.append({
+                'cells': arm.cells,
+                'vertical_walls': arm.vertical_walls,
+                'horizontal_walls': arm.horizontal_walls,
+            })
+        level_data['arms'] = arms_data
+        # Hub is shared across levels in radial_arm_3d (at root level)
+    
+    return level_data
+
+def _extract_connectors(connectors):
+    """Extract connector data from a list of LevelConnector objects."""
+    result = []
+    for conn in connectors:
+        result.append({
+            'type': conn.kind,
+            'from': {
+                'level': conn.start.level.name,
+                'row': conn.start.row,
+                'col': conn.start.col,
+                'arm': conn.start.arm,
+            },
+            'to': {
+                'level': conn.end.level.name,
+                'row': conn.end.row,
+                'col': conn.end.col,
+                'arm': conn.end.arm,
+            },
+        })
+    return result
+
 def _extract_maze_data(maze):
     """Helper to extract maze data as a dictionary - eliminates duplication."""
     data = {'maze_type': maze.maze_type}
     
-    if maze.maze_type == 'occupancy_grid':
+    # Check if this is a 3D maze type
+    is_3d = maze.maze_type.endswith('_3d')
+    
+    if is_3d:
+        # Extract levels and connectors for 3D mazes
+        levels_data = []
+        for level in maze.layout.levels:
+            levels_data.append(_extract_level_layout(level, maze.maze_type))
+        data['levels'] = levels_data
+        
+        # Extract connectors
+        data['connectors'] = _extract_connectors(maze.layout.connectors)
+        
+        # Extract elements (same for all levels)
+        data['elements'] = [
+            {'name': e.name, 'token': e.token, 'value': e.value}
+            for e in maze.config.cell_elements.elements()
+        ]
+        
+        # Wall elements for edge_grid_3d and radial_arm_3d
+        if hasattr(maze.config, 'wall_elements'):
+            data['wall_elements'] = [
+                {'name': e.name, 'token': e.token, 'value': e.value}
+                for e in maze.config.wall_elements.elements()
+            ]
+        
+        # Hub for radial_arm_3d - hub is now at root layout level
+        if 'radial_arm' in maze.maze_type:
+            hub = maze.layout.hub
+            data['hub'] = {
+                'shape': hub.shape,
+                'angle_degrees': hub.angle_degrees,
+            }
+            if hub.shape == 'circular':
+                data['hub']['radius'] = hub.radius
+            else:
+                data['hub']['side_length'] = hub.side_length
+    
+    elif maze.maze_type == 'occupancy_grid':
         data['grid'] = maze.layout.grid
         data['elements'] = [
             {'name': e.name, 'token': e.token, 'value': e.value}
@@ -107,6 +202,7 @@ print("py_ant_maze loaded successfully")
 
     return pyodide;
 }
+
 
 /**
  * Parse YAML text into maze data.
@@ -217,6 +313,7 @@ json.dumps(_maze_to_result(maze))
 
 /**
  * Resize the maze grid to new dimensions.
+ * For 3D mazes, resizes all levels to the same dimensions.
  */
 export async function resizeMaze(
     yamlText: string,
@@ -262,6 +359,16 @@ elif maze.maze_type == 'edge_grid':
     # horizontal: (H+1) x W
     resize_grid(maze.layout.vertical_walls, new_rows, new_cols + 1, 0)
     resize_grid(maze.layout.horizontal_walls, new_rows + 1, new_cols, 0)
+elif maze.maze_type == 'occupancy_grid_3d':
+    # Resize all levels for 3D occupancy grid
+    for level in maze.layout.levels:
+        resize_grid(level.layout.grid, new_rows, new_cols, default_value)
+elif maze.maze_type == 'edge_grid_3d':
+    # Resize all levels for 3D edge grid
+    for level in maze.layout.levels:
+        resize_grid(level.layout.cells, new_rows, new_cols, default_value)
+        resize_grid(level.layout.vertical_walls, new_rows, new_cols + 1, 0)
+        resize_grid(level.layout.horizontal_walls, new_rows + 1, new_cols, 0)
 # radial_arm resize not supported - use resizeRadialArm instead
 
 maze = maze.freeze()
@@ -569,6 +676,94 @@ json.dumps(_maze_to_result(maze))
 }
 
 /**
+ * Update a cell value within a specific level of a 3D maze.
+ */
+export async function update3DMazeCell(
+    yamlText: string,
+    levelIndex: number,
+    row: number,
+    col: number,
+    value: number,
+    gridType: GridType = 'grid'
+): Promise<MazeResult> {
+    const py = await getPyodide();
+    py.globals.set("yaml_text", yamlText);
+    py.globals.set("level_index", levelIndex);
+    py.globals.set("row", row);
+    py.globals.set("col", col);
+    py.globals.set("value", value);
+    py.globals.set("grid_type", gridType);
+
+    const jsonResult = py.runPython(`
+# Use MazeDraft for mutable access
+maze = Maze.from_text(yaml_text).thaw()
+
+level = maze.layout.levels[level_index]
+layout = level.layout
+
+if 'occupancy_grid' in maze.maze_type:
+    layout.grid[row][col] = value
+elif 'edge_grid' in maze.maze_type:
+    if grid_type == 'cells':
+        layout.cells[row][col] = value
+    elif grid_type == 'vertical_walls':
+        layout.vertical_walls[row][col] = value
+    elif grid_type == 'horizontal_walls':
+        layout.horizontal_walls[row][col] = value
+
+maze = maze.freeze()
+json.dumps(_maze_to_result(maze))
+  `);
+
+    return JSON.parse(jsonResult);
+}
+
+/**
+ * Update a cell or wall within a specific arm of a specific level in radial_arm_3d.
+ */
+export async function update3DRadialArmCell(
+    yamlText: string,
+    levelIndex: number,
+    armIndex: number,
+    row: number,
+    col: number,
+    value: number,
+    gridType: 'cells' | 'vertical_walls' | 'horizontal_walls' = 'cells'
+): Promise<MazeResult> {
+    const py = await getPyodide();
+    py.globals.set("yaml_text", yamlText);
+    py.globals.set("level_index", levelIndex);
+    py.globals.set("arm_index", armIndex);
+    py.globals.set("row", row);
+    py.globals.set("col", col);
+    py.globals.set("value", value);
+    py.globals.set("grid_type", gridType);
+
+    const jsonResult = py.runPython(`
+# Use MazeDraft for mutable access
+maze = Maze.from_text(yaml_text).thaw()
+
+if 'radial_arm' not in maze.maze_type:
+    raise ValueError('update3DRadialArmCell only works with radial_arm mazes')
+
+level = maze.layout.levels[level_index]
+arm = level.layout.arms[arm_index]
+
+if grid_type == 'cells':
+    arm.cells[row][col] = value
+elif grid_type == 'vertical_walls':
+    arm.vertical_walls[row][col] = value
+elif grid_type == 'horizontal_walls':
+    arm.horizontal_walls[row][col] = value
+
+maze = maze.freeze()
+json.dumps(_maze_to_result(maze))
+  `);
+
+    return JSON.parse(jsonResult);
+}
+
+/**
  * Create a new maze with default configuration.
  */
 export async function createNewMaze(
@@ -586,8 +781,14 @@ export async function createNewMaze(
         } else {
             yamlTemplate = DEFAULT_RADIAL_ARM_YAML;
         }
+    } else if (type === 'occupancy_grid_3d') {
+        yamlTemplate = DEFAULT_OCCUPANCY_GRID_3D_YAML;
+    } else if (type === 'edge_grid_3d') {
+        yamlTemplate = DEFAULT_EDGE_GRID_3D_YAML;
+    } else if (type === 'radial_arm_3d') {
+        yamlTemplate = DEFAULT_RADIAL_ARM_3D_YAML;
     } else {
-        yamlTemplate = DEFAULT_RADIAL_ARM_YAML;
+        yamlTemplate = DEFAULT_OCCUPANCY_YAML;
     }
 
     return parseMaze(yamlTemplate.trim());

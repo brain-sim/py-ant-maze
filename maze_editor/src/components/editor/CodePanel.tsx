@@ -6,6 +6,7 @@
 
 import { RefreshCw, Play, Upload, Download, Image as ImageIcon, FileText, AlertCircle } from 'lucide-react';
 import type { MazeData, MazeType, LayerType, ElementType } from '../../types/maze';
+import { is3DMazeType, getBase2DType } from '../../types/maze';
 import { MazeTypeSelector } from '../controls/MazeTypeSelector';
 import { GridSizeControl } from '../controls/GridSizeControl';
 import { RadialArmSizeControl } from '../controls/RadialArmSizeControl';
@@ -76,7 +77,24 @@ export function CodePanel({
     onDownload,
     onExportImage,
 }: CodePanelProps) {
-    const gridData = mazeData?.grid || mazeData?.cells || [];
+    // Determine base type for conditional rendering
+    const is3D = mazeData ? is3DMazeType(mazeData.maze_type) : false;
+    const baseType = mazeData
+        ? (is3D ? getBase2DType(mazeData.maze_type as import('../../types/maze').MazeType3D) : mazeData.maze_type)
+        : null;
+
+    // Compute grid dimensions - for 3D mazes, use first level's data
+    let gridData: number[][] = [];
+    if (mazeData) {
+        if (is3D && mazeData.levels && mazeData.levels.length > 0) {
+            // For 3D mazes, get grid from first level
+            const firstLevel = mazeData.levels[0];
+            gridData = firstLevel.grid || firstLevel.cells || [];
+        } else {
+            // For 2D mazes, use top-level grid
+            gridData = mazeData.grid || mazeData.cells || [];
+        }
+    }
     const rows = gridData.length;
     const cols = gridData[0]?.length || 0;
 
@@ -128,15 +146,16 @@ export function CodePanel({
                     onChange={onCreate}
                 />
 
-                {/* Resize Controls - conditional based on maze type */}
-                {mazeData && mazeData.maze_type !== 'radial_arm' && (
+                {/* Resize Controls - conditional based on base maze type */}
+                {mazeData && baseType !== 'radial_arm' && (
                     <GridSizeControl
                         rows={rows}
                         cols={cols}
                         onResize={onResize}
+                        is3D={is3D}
                     />
                 )}
-                {mazeData && mazeData.maze_type === 'radial_arm' && mazeData.arms && (
+                {mazeData && baseType === 'radial_arm' && mazeData.arms && (
                     <RadialArmSizeControl
                         arms={mazeData.arms}
                         angleDegrees={mazeData.hub?.angle_degrees}
@@ -153,7 +172,7 @@ export function CodePanel({
                 {/* Add Element Controls */}
                 {mazeData && (
                     <AddElementForm
-                        isEdgeGrid={mazeData.maze_type === 'edge_grid'}
+                        isEdgeGrid={baseType === 'edge_grid'}
                         selectedLayer={selectedLayer}
                         onLayerChange={onLayerChange}
                         onAdd={onAddElement}

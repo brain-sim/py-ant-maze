@@ -108,6 +108,8 @@ function App() {
             selectedWallElementValue={maze.selectedWallElementValue}
             onSelectWallElement={maze.setSelectedWallElementValue}
             gridRef={fileOps.gridRef}
+            selectedLevelIndex={maze.selectedLevelIndex}
+            onLevelChange={maze.setSelectedLevelIndex}
           />
         </div>
       </main>

@@ -6,12 +6,14 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import type { MazeData, LayerType, MazeType, ElementType, WallType } from '../types/maze';
+import { is3DMazeType } from '../types/maze';
 import {
     getPyodide,
     parseMaze,
     formatMaze,
     updateMaze,
     updateRadialArmCell,
+    update3DMazeCell,
     resizeMaze,
     resizeRadialArm,
     setRadialArmCount,
@@ -37,6 +39,8 @@ export interface UseMazeState {
     selectedWallElementValue: number;
     /** Currently selected layer (cells or walls) */
     selectedLayer: LayerType;
+    /** Currently selected level index (for 3D mazes) */
+    selectedLevelIndex: number;
 }
 
 export interface UseMazeActions {
@@ -48,6 +52,8 @@ export interface UseMazeActions {
     setSelectedWallElementValue: (value: number) => void;
     /** Set the selected layer */
     setSelectedLayer: (layer: LayerType) => void;
+    /** Set the selected level index (for 3D mazes) */
+    setSelectedLevelIndex: (index: number) => void;
     /** Parse the current input */
     parse: () => Promise<void>;
     /** Format and parse the current input */
@@ -91,6 +97,7 @@ export function useMaze(): UseMazeResult {
     const [selectedElementValue, setSelectedElementValue] = useState(1);
     const [selectedWallElementValue, setSelectedWallElementValue] = useState(1);
     const [selectedLayer, setSelectedLayer] = useState<LayerType>('cells');
+    const [selectedLevelIndex, setSelectedLevelIndex] = useState(0);
 
     // Parse YAML and update maze data
     const parse = useCallback(async (yamlText?: string) => {
@@ -131,59 +138,91 @@ export function useMaze(): UseMazeResult {
         }
     }, [input, parse]);
 
-    // Update a cell (occupancy_grid and edge_grid only)
+    // Update a cell (works for both 2D and 3D mazes)
     const updateCell = useCallback(async (row: number, col: number) => {
         if (!mazeData) return;
-        if (mazeData.maze_type === 'radial_arm') return; // Use updateRadialCell instead
+        if (mazeData.maze_type === 'radial_arm' || mazeData.maze_type === 'radial_arm_3d') return; // Use updateRadialCell instead
+
+        const is3D = is3DMazeType(mazeData.maze_type);
 
         // Get current value based on maze type
         let currentVal: number | undefined;
-        if (mazeData.maze_type === 'occupancy_grid') {
-            currentVal = mazeData.grid?.[row][col];
-        } else if (mazeData.maze_type === 'edge_grid') {
-            currentVal = mazeData.cells?.[row][col];
+        if (is3D) {
+            const level = mazeData.levels?.[selectedLevelIndex];
+            if (mazeData.maze_type === 'occupancy_grid_3d') {
+                currentVal = level?.grid?.[row]?.[col];
+            } else if (mazeData.maze_type === 'edge_grid_3d') {
+                currentVal = level?.cells?.[row]?.[col];
+            }
+        } else {
+            if (mazeData.maze_type === 'occupancy_grid') {
+                currentVal = mazeData.grid?.[row][col];
+            } else if (mazeData.maze_type === 'edge_grid') {
+                currentVal = mazeData.cells?.[row][col];
+            }
         }
         if (currentVal === selectedElementValue) return;
 
         try {
-            const { text, data } = await updateMaze(input, row, col, selectedElementValue, 'cells');
-            setInput(text);
-            setMazeData(data);
+            let result;
+            if (is3D) {
+                result = await update3DMazeCell(input, selectedLevelIndex, row, col, selectedElementValue, 'cells');
+            } else {
+                result = await updateMaze(input, row, col, selectedElementValue, 'cells');
+            }
+            setInput(result.text);
+            setMazeData(result.data);
             setError(null);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedElementValue]);
+    }, [mazeData, input, selectedElementValue, selectedLevelIndex]);
 
-    // Update a wall (edge_grid only)
+    // Update a wall (edge_grid and edge_grid_3d)
     const updateWall = useCallback(async (
         row: number,
         col: number,
         wallType: WallType
     ) => {
         if (!mazeData) return;
-        if (mazeData.maze_type !== 'edge_grid') return; // Use updateRadialWall for radial_arm
+        if (mazeData.maze_type !== 'edge_grid' && mazeData.maze_type !== 'edge_grid_3d') return;
+
+        const is3D = is3DMazeType(mazeData.maze_type);
 
         // Get current value based on wall type
         let currentVal: number | undefined;
-        if (wallType === 'vertical') {
-            currentVal = mazeData.vertical_walls?.[row][col];
-        } else if (wallType === 'horizontal') {
-            currentVal = mazeData.horizontal_walls?.[row][col];
+        if (is3D) {
+            const level = mazeData.levels?.[selectedLevelIndex];
+            if (wallType === 'vertical') {
+                currentVal = level?.vertical_walls?.[row]?.[col];
+            } else if (wallType === 'horizontal') {
+                currentVal = level?.horizontal_walls?.[row]?.[col];
+            }
+        } else {
+            if (wallType === 'vertical') {
+                currentVal = mazeData.vertical_walls?.[row][col];
+            } else if (wallType === 'horizontal') {
+                currentVal = mazeData.horizontal_walls?.[row][col];
+            }
         }
         if (currentVal === selectedWallElementValue) return;
 
         const gridType = wallType === 'vertical' ? 'vertical_walls' : 'horizontal_walls';
 
         try {
-            const { text, data } = await updateMaze(input, row, col, selectedWallElementValue, gridType);
-            setInput(text);
-            setMazeData(data);
+            let result;
+            if (is3D) {
+                result = await update3DMazeCell(input, selectedLevelIndex, row, col, selectedWallElementValue, gridType);
+            } else {
+                result = await updateMaze(input, row, col, selectedWallElementValue, gridType);
+            }
+            setInput(result.text);
+            setMazeData(result.data);
             setError(null);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedWallElementValue]);
+    }, [mazeData, input, selectedWallElementValue, selectedLevelIndex]);
 
     // Update a radial_arm cell
     const updateRadialCell = useCallback(async (
@@ -369,11 +408,13 @@ export function useMaze(): UseMazeResult {
         selectedElementValue,
         selectedWallElementValue,
         selectedLayer,
+        selectedLevelIndex,
         // Actions
         setInput,
         setSelectedElementValue,
         setSelectedWallElementValue,
         setSelectedLayer,
+        setSelectedLevelIndex,
         parse: () => parse(),
         format,
         updateCell,

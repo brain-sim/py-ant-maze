@@ -19,3 +19,6 @@ export type { ElementPaletteProps } from './ElementPalette';
 
 export { LayerToggle } from './LayerToggle';
 export type { LayerToggleProps } from './LayerToggle';
+
+export { LevelSelector } from './LevelSelector';
+export type { LevelSelectorProps } from './LevelSelector';

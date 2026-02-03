@@ -1,6 +1,7 @@
 import React from 'react';
 import clsx from 'clsx';
 import type { MazeData, WallType } from '../types/maze';
+import { is3DMazeType, getBase2DType } from '../types/maze';
 import { CELL_ELEMENT_COLORS, WALL_ELEMENT_COLORS, ELEMENT_COLORS } from '../constants/defaults';
 import { RadialArmGrid } from './RadialArmGrid';
 
@@ -91,6 +92,9 @@ export function MazeGrid({
     const { maze_type, grid, cells, vertical_walls, horizontal_walls, elements, wall_elements } = data;
     const [isDrawing, setIsDrawing] = React.useState(false);
 
+    // Get the base type (occupancy_grid, edge_grid, radial_arm) for rendering decisions
+    const baseType = is3DMazeType(maze_type) ? getBase2DType(maze_type) : maze_type;
+
     React.useEffect(() => {
         const handleGlobalMouseUp = () => setIsDrawing(false);
         window.addEventListener('mouseup', handleGlobalMouseUp);
@@ -110,7 +114,7 @@ export function MazeGrid({
     }, [wall_elements]);
 
     const handleCellAction = (r: number, c: number) => {
-        if (maze_type === 'edge_grid' && selectedLayer !== 'cells') return;
+        if (baseType === 'edge_grid' && selectedLayer !== 'cells') return;
         onCellClick(r, c);
     };
 
@@ -132,7 +136,7 @@ export function MazeGrid({
         }
     };
 
-    if (maze_type === 'occupancy_grid' && grid) {
+    if (baseType === 'occupancy_grid' && grid) {
         const rows = grid.length;
         const cols = grid[0]?.length || 0;
         const cellSize = Math.max(24, Math.min(48, Math.floor(600 / Math.max(rows, cols))));
@@ -173,7 +177,7 @@ export function MazeGrid({
         );
     }
 
-    if (maze_type === 'edge_grid' && cells && vertical_walls && horizontal_walls) {
+    if (baseType === 'edge_grid' && cells && vertical_walls && horizontal_walls) {
         const h = cells.length;
         const w = cells[0]?.length || 0;
         const S = Math.max(24, Math.min(48, Math.floor(600 / Math.max(h, w))));
@@ -203,7 +207,6 @@ export function MazeGrid({
                             // Horizontal Wall - extend to cover corners
                             const val = horizontal_walls[rIndex][cIndex];
                             const el = wallElementMap.get(val);
-                            const isWall = el?.name === 'wall';
                             const { className: colorClass, style: colorStyle } = generateColorStyle(el?.name || 'unknown', 'wall');
                             return (
                                 <div
@@ -212,7 +215,7 @@ export function MazeGrid({
                                     onMouseEnter={() => handleMouseEnter(rIndex, cIndex, 'horizontal')}
                                     style={{
                                         ...colorStyle,
-                                        ...(isWall ? { width: S + T, marginLeft: -T / 2, marginRight: -T / 2, zIndex: 1 } : {})
+                                        ...({ width: S + T, marginLeft: -T / 2, marginRight: -T / 2, zIndex: 1 })
                                     }}
                                     className={clsx('cursor-pointer transition-all hover:brightness-125 relative', colorClass)}
                                     title={`H-Wall (${rIndex}, ${cIndex})`}
@@ -224,7 +227,6 @@ export function MazeGrid({
                             // Vertical Wall - extend to cover corners
                             const val = vertical_walls[rIndex][cIndex];
                             const el = wallElementMap.get(val);
-                            const isWall = el?.name === 'wall';
                             const { className: colorClass, style: colorStyle } = generateColorStyle(el?.name || 'unknown', 'wall');
                             return (
                                 <div
@@ -233,7 +235,7 @@ export function MazeGrid({
                                     onMouseEnter={() => handleMouseEnter(rIndex, cIndex, 'vertical')}
                                     style={{
                                         ...colorStyle,
-                                        ...(isWall ? { height: S + T, marginTop: -T / 2, marginBottom: -T / 2, zIndex: 1 } : {})
+                                        ...({ height: S + T, marginTop: -T / 2, marginBottom: -T / 2, zIndex: 1 })
                                     }}
                                     className={clsx('cursor-pointer transition-all hover:brightness-125 relative', colorClass)}
                                     title={`V-Wall (${rIndex}, ${cIndex})`}
@@ -261,7 +263,7 @@ export function MazeGrid({
         );
     }
 
-    if (maze_type === 'radial_arm') {
+    if (baseType === 'radial_arm') {
         return (
             <RadialArmGrid
                 data={data}
