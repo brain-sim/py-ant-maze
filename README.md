@@ -31,17 +31,27 @@ npm install
 npm run dev
 ```
 
-## Overview
+## Maze Types
 
-The **py_ant_maze** library supports multiple maze types:
-- **Occupancy Grid**: Classic blocked/open cell representation (2D and 3D)
-- **Edge Grid**: Thin walls between cells (2D and 3D)
-- **Radial Arm**: Center hub with multiple arms (2D and 3D)
+| Type | Description | Variants |
+|------|-------------|----------|
+| **Occupancy Grid** | Classic blocked/open cell representation | 2D, 3D |
+| **Edge Grid** | Thin walls between cells | 2D, 3D |
+| **Radial Arm** | Center hub with configurable arms | 2D, 3D |
 
-The **Maze Editor** runs in the browser using [Pyodide](https://pyodide.org/) to interface directly with the Python library.
+All types support both 2D (single layer) and 3D (multi-level with connectors).
 
-Features:
-- Visual drag-and-paint editing
-- Bidirectional YAML synchronization  
-- Custom element creation
-- Export to YAML and PNG
+## Web Editor Features
+
+- **Visual Editing**: Click and drag to paint cells and walls
+- **3D Multi-Level**: Add/remove levels, switch between floors
+- **Radial Arm Controls**: Adjust hub shape/size, arm count, and per-arm dimensions
+- **Connectors**: Place elevators and escalators between levels
+- **Import/Export**: Load and save YAML files, export as PNG images
+- **Real-time Sync**: Bidirectional YAML ↔ Grid synchronization
+
+The editor runs entirely in the browser using [Pyodide](https://pyodide.org/) to interface with the Python library.
+
+## License
+
+MIT
