@@ -25,6 +25,9 @@ function App() {
 
   const fileOps = useFileOperations({
     input: maze.input,
+    mazeData: maze.mazeData,
+    selectedLevelIndex: maze.selectedLevelIndex,
+    setSelectedLevelIndex: maze.setSelectedLevelIndex,
     onFileLoaded: handleFileLoaded,
     onError: (err) => console.error(err),
   });
@@ -68,6 +71,7 @@ function App() {
             onSetArmCount={maze.setArmCount}
             onSetAngle={maze.setAngle}
             onSetHubSize={maze.setHubSize}
+            onSetLevelCount={maze.setLevelCountAction}
             onAddElement={maze.addNewElement}
             selectedLayer={maze.selectedLayer}
             onLayerChange={maze.setSelectedLayer}

@@ -305,8 +305,116 @@ layout:
       to: {level: upper, row: 1, col: 0}
 `;
 
-/** Default YAML for a new 3D radial arm maze */
-export const DEFAULT_RADIAL_ARM_3D_YAML = `maze_type: radial_arm_3d
+/** Default YAML for a new 3D radial arm maze with circular hub */
+export const DEFAULT_RADIAL_ARM_3D_CIRCULAR_YAML = `maze_type: radial_arm_3d
+config:
+  cell_elements:
+    - name: open
+      token: '.'
+    - name: elevator
+      token: 'E'
+    - name: escalator
+      token: 'S'
+  wall_elements:
+    - name: wall
+      token: '#'
+    - name: open
+      token: '-'
+layout:
+  center_hub:
+    shape: circular
+    angle_degrees: 360
+    radius: 2.0
+  levels:
+    - id: ground
+      layout:
+        arms:
+          - layout:
+              cells: |
+                E . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+          - layout:
+              cells: |
+                . . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+          - layout:
+              cells: |
+                . S . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+          - layout:
+              cells: |
+                . . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+    - id: upper
+      layout:
+        arms:
+          - layout:
+              cells: |
+                E . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+          - layout:
+              cells: |
+                . . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+          - layout:
+              cells: |
+                S . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+          - layout:
+              cells: |
+                . . . .
+              walls:
+                vertical: |
+                  # # # # #
+                horizontal: |
+                  # # # #
+                  # # # #
+  connectors:
+    - type: elevator
+      from: {level: ground, row: 0, col: 0, arm: 0}
+      to: {level: upper, row: 0, col: 0, arm: 0}
+    - type: escalator
+      from: {level: ground, row: 0, col: 1, arm: 2}
+      to: {level: upper, row: 0, col: 0, arm: 2}
+`;
+
+/** Default YAML for a new 3D radial arm maze with polygon hub */
+export const DEFAULT_RADIAL_ARM_3D_POLYGON_YAML = `maze_type: radial_arm_3d
 config:
   cell_elements:
     - name: open

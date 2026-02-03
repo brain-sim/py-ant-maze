@@ -10,6 +10,7 @@ import { is3DMazeType, getBase2DType } from '../../types/maze';
 import { MazeTypeSelector } from '../controls/MazeTypeSelector';
 import { GridSizeControl } from '../controls/GridSizeControl';
 import { RadialArmSizeControl } from '../controls/RadialArmSizeControl';
+import { LevelCountControl } from '../controls/LevelCountControl';
 import { AddElementForm } from '../controls/AddElementForm';
 
 export interface CodePanelProps {
@@ -35,6 +36,8 @@ export interface CodePanelProps {
     onSetAngle?: (degrees: number) => void;
     /** Callback to set hub size (radial_arm only) */
     onSetHubSize?: (size: number) => void;
+    /** Callback to set level count (3D mazes only) */
+    onSetLevelCount?: (count: number) => void;
     /** Callback to add element */
     onAddElement: (name: string, token: string, type: ElementType) => void;
     /** Current layer selection */
@@ -67,6 +70,7 @@ export function CodePanel({
     onSetArmCount,
     onSetAngle,
     onSetHubSize,
+    onSetLevelCount,
     onAddElement,
     selectedLayer,
     onLayerChange,
@@ -97,6 +101,9 @@ export function CodePanel({
     }
     const rows = gridData.length;
     const cols = gridData[0]?.length || 0;
+
+    // Extract arms for radial_arm mazes (2D uses mazeData.arms, 3D uses levels[0].arms)
+    const radialArms = mazeData?.arms || mazeData?.levels?.[0]?.arms;
 
     return (
         <div className="h-full flex flex-col">
@@ -146,6 +153,14 @@ export function CodePanel({
                     onChange={onCreate}
                 />
 
+                {/* Level Count Control - 3D mazes only */}
+                {mazeData && is3D && mazeData.levels && onSetLevelCount && (
+                    <LevelCountControl
+                        levelCount={mazeData.levels.length}
+                        onSetLevelCount={onSetLevelCount}
+                    />
+                )}
+
                 {/* Resize Controls - conditional based on base maze type */}
                 {mazeData && baseType !== 'radial_arm' && (
                     <GridSizeControl
@@ -155,9 +170,9 @@ export function CodePanel({
                         is3D={is3D}
                     />
                 )}
-                {mazeData && baseType === 'radial_arm' && mazeData.arms && (
+                {mazeData && baseType === 'radial_arm' && radialArms && (
                     <RadialArmSizeControl
-                        arms={mazeData.arms}
+                        arms={radialArms}
                         angleDegrees={mazeData.hub?.angle_degrees}
                         hubShape={mazeData.hub?.shape}
                         hubRadius={mazeData.hub?.radius}

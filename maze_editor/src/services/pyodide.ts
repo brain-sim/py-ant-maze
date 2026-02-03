@@ -14,7 +14,8 @@ import {
     DEFAULT_RADIAL_ARM_POLYGON_YAML,
     DEFAULT_OCCUPANCY_GRID_3D_YAML,
     DEFAULT_EDGE_GRID_3D_YAML,
-    DEFAULT_RADIAL_ARM_3D_YAML,
+    DEFAULT_RADIAL_ARM_3D_CIRCULAR_YAML,
+    DEFAULT_RADIAL_ARM_3D_POLYGON_YAML,
 } from "../constants/defaults";
 
 // Re-export types for convenience
@@ -279,7 +280,8 @@ export async function updateRadialArmCell(
     row: number,
     col: number,
     value: number,
-    gridType: 'cells' | 'vertical_walls' | 'horizontal_walls' = 'cells'
+    gridType: 'cells' | 'vertical_walls' | 'horizontal_walls' = 'cells',
+    levelIndex?: number
 ): Promise<MazeResult> {
     const py = await getPyodide();
     py.globals.set("yaml_text", yamlText);
@@ -288,15 +290,21 @@ export async function updateRadialArmCell(
     py.globals.set("col", col);
     py.globals.set("value", value);
     py.globals.set("grid_type", gridType);
+    py.globals.set("level_index", levelIndex ?? -1);
 
     const jsonResult = py.runPython(`
 # Use MazeDraft for mutable access
 maze = Maze.from_text(yaml_text).thaw()
 
-if maze.maze_type != 'radial_arm':
-    raise ValueError('updateRadialArmCell only works with radial_arm mazes')
+if maze.maze_type == 'radial_arm':
+    arm = maze.layout.arms[arm_index]
+elif maze.maze_type == 'radial_arm_3d':
+    if level_index < 0:
+        raise ValueError('levelIndex is required for radial_arm_3d')
+    arm = maze.layout.levels[level_index].arms[arm_index]
+else:
+    raise ValueError('updateRadialArmCell only works with radial_arm or radial_arm_3d mazes')
 
-arm = maze.layout.arms[arm_index]
 if grid_type == 'cells':
     arm.cells[row][col] = value
 elif grid_type == 'vertical_walls':
@@ -421,35 +429,41 @@ def resize_grid(grid, target_rows, target_cols, fill_value):
         elif target_cols < current_row_len:
             row[:] = row[:target_cols]
 
-if maze.maze_type == 'radial_arm':
-    arm = maze.layout.arms[arm_index]
+def resize_arm(arm):
     # Cells: width (rows) x length (cols)
     resize_grid(arm.cells, new_width, new_length, default_cell_value)
     # Vertical walls: width x (length + 1)
     resize_grid(arm.vertical_walls, new_width, new_length + 1, default_wall_value)
     # Horizontal walls: (width + 1) x length
     resize_grid(arm.horizontal_walls, new_width + 1, new_length, default_wall_value)
-    
-    # Recalculate minimum hub size based on new arm widths
-    import math
+
+if maze.maze_type == 'radial_arm':
+    resize_arm(maze.layout.arms[arm_index])
     hub = maze.layout.hub
     arm_widths = [len(a.cells) for a in maze.layout.arms]
-    
-    if hub.shape == 'circular':
-        # Minimum radius based on max arm width - assume all arms have max width
-        # This ensures the hub can properly connect to the widest arm
-        angle_radians = math.radians(hub.angle_degrees)
-        max_width = max(arm_widths)
-        arm_count = len(arm_widths)
-        total_width = max_width * arm_count
-        min_radius = total_width / angle_radians
-        if hub.radius is None or hub.radius < min_radius:
-            hub.radius = min_radius
-    elif hub.shape == 'polygon':
-        # Minimum side_length = max arm width
-        min_side = max(arm_widths)
-        if hub.side_length is None or hub.side_length < min_side:
-            hub.side_length = float(min_side)
+elif maze.maze_type == 'radial_arm_3d':
+    # Resize the same arm on all levels
+    for level in maze.layout.levels:
+        resize_arm(level.arms[arm_index])
+    hub = maze.layout.hub
+    arm_widths = [len(a.cells) for a in maze.layout.levels[0].arms]
+else:
+    raise ValueError('resizeRadialArm only works with radial_arm or radial_arm_3d mazes')
+
+# Recalculate minimum hub size based on new arm widths
+import math
+if hub.shape == 'circular':
+    angle_radians = math.radians(hub.angle_degrees)
+    max_width = max(arm_widths)
+    arm_count = len(arm_widths)
+    total_width = max_width * arm_count
+    min_radius = total_width / angle_radians
+    if hub.radius is None or hub.radius < min_radius:
+        hub.radius = min_radius
+elif hub.shape == 'polygon':
+    min_side = max(arm_widths)
+    if hub.side_length is None or hub.side_length < min_side:
+        hub.side_length = float(min_side)
 
 # Freeze back to Maze for result
 maze = maze.freeze()
@@ -482,46 +496,43 @@ from py_ant_maze.mazes.two_d.edge_grid import EdgeGridLayout
 
 maze = Maze.from_text(yaml_text).thaw()
 
-if maze.maze_type != 'radial_arm':
-    raise ValueError("setRadialArmCount only works on radial_arm mazes")
+def create_new_arm(template_arm):
+    rows = len(template_arm.cells)
+    cols = len(template_arm.cells[0]) if template_arm.cells else 4
+    new_cells = [[default_cell_value] * cols for _ in range(rows)]
+    new_v_walls = [[default_wall_value] * (cols + 1) for _ in range(rows)]
+    new_h_walls = [[default_wall_value] * cols for _ in range(rows + 1)]
+    return EdgeGridLayout(cells=new_cells, vertical_walls=new_v_walls, horizontal_walls=new_h_walls)
 
-current_count = len(maze.layout.arms)
+def adjust_arms(arms_list):
+    current_count = len(arms_list)
+    if target_count > current_count:
+        template_arm = arms_list[-1]
+        for _ in range(target_count - current_count):
+            arms_list.append(create_new_arm(template_arm))
+    elif target_count < current_count:
+        arms_list[:] = arms_list[:target_count]
+
 target_count = new_count
-
 if target_count < 1:
     raise ValueError("Must have at least 1 arm")
 
-if target_count > current_count:
-    # Add new arms - copy structure from the last existing arm
-    template_arm = maze.layout.arms[-1]
-    rows = len(template_arm.cells)
-    cols = len(template_arm.cells[0]) if template_arm.cells else 4
-    
-    for _ in range(target_count - current_count):
-        # Create new arm with same dimensions as template
-        new_cells = [[default_cell_value] * cols for _ in range(rows)]
-        new_v_walls = [[default_wall_value] * (cols + 1) for _ in range(rows)]
-        new_h_walls = [[default_wall_value] * cols for _ in range(rows + 1)]
-        
-        # Create EdgeGridLayout for the new arm
-        new_arm = EdgeGridLayout(
-            cells=new_cells,
-            vertical_walls=new_v_walls,
-            horizontal_walls=new_h_walls
-        )
-        maze.layout.arms.append(new_arm)
-        
-elif target_count < current_count:
-    # Remove arms from the end
-    maze.layout.arms = maze.layout.arms[:target_count]
+if maze.maze_type == 'radial_arm':
+    adjust_arms(maze.layout.arms)
+    hub = maze.layout.hub
+    arm_widths = [len(a.cells) for a in maze.layout.arms]
+elif maze.maze_type == 'radial_arm_3d':
+    # Adjust arms on all levels
+    for level in maze.layout.levels:
+        adjust_arms(level.arms)
+    hub = maze.layout.hub
+    arm_widths = [len(a.cells) for a in maze.layout.levels[0].arms]
+else:
+    raise ValueError('setRadialArmCount only works with radial_arm or radial_arm_3d mazes')
 
 # Recalculate minimum hub size based on new arm count
 import math
-hub = maze.layout.hub
-arm_widths = [len(a.cells) for a in maze.layout.arms]
-
 if hub.shape == 'circular':
-    # Minimum radius based on max arm width × arm count
     angle_radians = math.radians(hub.angle_degrees)
     max_width = max(arm_widths)
     arm_count = len(arm_widths)
@@ -530,7 +541,6 @@ if hub.shape == 'circular':
     if hub.radius is None or hub.radius < min_radius:
         hub.radius = min_radius
 elif hub.shape == 'polygon':
-    # Minimum side_length = max arm width
     min_side = max(arm_widths)
     if hub.side_length is None or hub.side_length < min_side:
         hub.side_length = float(min_side)
@@ -559,8 +569,8 @@ import json
 
 maze = Maze.from_text(yaml_text).thaw()
 
-if maze.maze_type != 'radial_arm':
-    raise ValueError("setRadialArmAngle only works on radial_arm mazes")
+if maze.maze_type not in ('radial_arm', 'radial_arm_3d'):
+    raise ValueError('setRadialArmAngle only works with radial_arm or radial_arm_3d mazes')
 
 if angle_degrees < 1 or angle_degrees > 360:
     raise ValueError("angle_degrees must be between 1 and 360")
@@ -592,11 +602,14 @@ import math
 
 maze = Maze.from_text(yaml_text).thaw()
 
-if maze.maze_type != 'radial_arm':
-    raise ValueError("setRadialArmHubSize only works on radial_arm mazes")
-
-hub = maze.layout.hub
-arm_widths = [len(a.cells) for a in maze.layout.arms]
+if maze.maze_type == 'radial_arm':
+    hub = maze.layout.hub
+    arm_widths = [len(a.cells) for a in maze.layout.arms]
+elif maze.maze_type == 'radial_arm_3d':
+    hub = maze.layout.hub
+    arm_widths = [len(a.cells) for a in maze.layout.levels[0].arms]
+else:
+    raise ValueError('setRadialArmHubSize only works with radial_arm or radial_arm_3d mazes')
 
 if hub.shape == 'circular':
     # Calculate minimum radius
@@ -786,10 +799,110 @@ export async function createNewMaze(
     } else if (type === 'edge_grid_3d') {
         yamlTemplate = DEFAULT_EDGE_GRID_3D_YAML;
     } else if (type === 'radial_arm_3d') {
-        yamlTemplate = DEFAULT_RADIAL_ARM_3D_YAML;
+        if (hubType === 'polygon') {
+            yamlTemplate = DEFAULT_RADIAL_ARM_3D_POLYGON_YAML;
+        } else {
+            yamlTemplate = DEFAULT_RADIAL_ARM_3D_CIRCULAR_YAML;
+        }
     } else {
         yamlTemplate = DEFAULT_OCCUPANCY_YAML;
     }
 
     return parseMaze(yamlTemplate.trim());
+}
+
+/**
+ * Set the number of levels in a 3D maze.
+ * Adds new levels (copying structure from last level) or removes levels from the end.
+ */
+export async function setLevelCount(
+    yamlText: string,
+    newCount: number,
+    defaultCellValue: number = 0,
+    defaultWallValue: number = 0
+): Promise<MazeResult> {
+    const py = await getPyodide();
+    py.globals.set("yaml_text", yamlText);
+    py.globals.set("new_count", newCount);
+    py.globals.set("default_cell_value", defaultCellValue);
+    py.globals.set("default_wall_value", defaultWallValue);
+
+    const jsonResult = py.runPython(`
+import json
+import copy
+from py_ant_maze.core.parsing.multi_level import LevelDefinition
+
+maze = Maze.from_text(yaml_text).thaw()
+
+if not maze.maze_type.endswith('_3d'):
+    raise ValueError('setLevelCount only works with 3D mazes')
+
+levels = maze.layout.levels
+current_count = len(levels)
+target_count = new_count
+
+# 3D mazes require at least 2 levels
+if target_count < 2:
+    raise ValueError("3D mazes must have at least 2 levels")
+
+if target_count > current_count:
+    # Add new levels by copying the last level's structure
+    template_level = levels[-1]
+    
+    for i in range(target_count - current_count):
+        new_index = current_count + i
+        # Create a deep copy of the template level
+        new_level = copy.deepcopy(template_level)
+        # Create a new LevelDefinition (since it's a frozen dataclass)
+        new_level.definition = LevelDefinition(
+            name=f"level_{new_index}",
+            index=new_index
+        )
+        
+        # Reset all cell values to default
+        if 'occupancy_grid' in maze.maze_type:
+            for row in new_level.layout.grid:
+                for j in range(len(row)):
+                    row[j] = default_cell_value
+        elif 'edge_grid' in maze.maze_type:
+            for row in new_level.layout.cells:
+                for j in range(len(row)):
+                    row[j] = default_cell_value
+            for row in new_level.layout.vertical_walls:
+                for j in range(len(row)):
+                    row[j] = default_wall_value
+            for row in new_level.layout.horizontal_walls:
+                for j in range(len(row)):
+                    row[j] = default_wall_value
+        elif 'radial_arm' in maze.maze_type:
+            for arm in new_level.arms:
+                for row in arm.cells:
+                    for j in range(len(row)):
+                        row[j] = default_cell_value
+                for row in arm.vertical_walls:
+                    for j in range(len(row)):
+                        row[j] = default_wall_value
+                for row in arm.horizontal_walls:
+                    for j in range(len(row)):
+                        row[j] = default_wall_value
+        
+        levels.append(new_level)
+elif target_count < current_count:
+    # Remove levels from the end
+    levels[:] = levels[:target_count]
+    
+    # Also remove any connectors that reference deleted levels
+    valid_level_names = {level.definition.name for level in levels}
+    connectors = maze.layout.connectors
+    connectors[:] = [
+        conn for conn in connectors
+        if conn.start.level.name in valid_level_names and conn.end.level.name in valid_level_names
+    ]
+
+# Freeze back to Maze for result
+maze = maze.freeze()
+json.dumps(_maze_to_result(maze))
+    `);
+
+    return JSON.parse(jsonResult);
 }

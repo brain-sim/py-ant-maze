@@ -19,6 +19,7 @@ import {
     setRadialArmCount,
     setRadialArmAngle,
     setRadialArmHubSize,
+    setLevelCount,
     addElement,
     createNewMaze,
 } from '../services/pyodide';
@@ -78,6 +79,8 @@ export interface UseMazeActions {
     setHubSize: (size: number) => Promise<void>;
     /** Add a new element */
     addNewElement: (name: string, token: string, type: ElementType) => Promise<void>;
+    /** Set the number of levels in 3D maze */
+    setLevelCountAction: (count: number) => Promise<void>;
     /** Create a new maze of the specified type */
     create: (type: MazeType) => Promise<void>;
     /** Clear the current error */
@@ -230,21 +233,30 @@ export function useMaze(): UseMazeResult {
         row: number,
         col: number
     ) => {
-        if (!mazeData || mazeData.maze_type !== 'radial_arm') return;
+        if (!mazeData) return;
+        if (mazeData.maze_type !== 'radial_arm' && mazeData.maze_type !== 'radial_arm_3d') return;
 
-        const arm = mazeData.arms?.[armIndex];
-        const currentVal = arm?.cells?.[row]?.[col];
+        // Get current value based on 2D or 3D
+        let currentVal: number | undefined;
+        if (mazeData.maze_type === 'radial_arm_3d') {
+            const level = mazeData.levels?.[selectedLevelIndex];
+            currentVal = level?.arms?.[armIndex]?.cells?.[row]?.[col];
+        } else {
+            const arm = mazeData.arms?.[armIndex];
+            currentVal = arm?.cells?.[row]?.[col];
+        }
         if (currentVal === selectedElementValue) return;
 
         try {
-            const { text, data } = await updateRadialArmCell(input, armIndex, row, col, selectedElementValue, 'cells');
+            const levelIndex = mazeData.maze_type === 'radial_arm_3d' ? selectedLevelIndex : undefined;
+            const { text, data } = await updateRadialArmCell(input, armIndex, row, col, selectedElementValue, 'cells', levelIndex);
             setInput(text);
             setMazeData(data);
             setError(null);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedElementValue]);
+    }, [mazeData, input, selectedElementValue, selectedLevelIndex]);
 
     // Update a radial_arm wall
     const updateRadialWall = useCallback(async (
@@ -253,28 +265,41 @@ export function useMaze(): UseMazeResult {
         col: number,
         wallType: WallType
     ) => {
-        if (!mazeData || mazeData.maze_type !== 'radial_arm') return;
+        if (!mazeData) return;
+        if (mazeData.maze_type !== 'radial_arm' && mazeData.maze_type !== 'radial_arm_3d') return;
 
-        const arm = mazeData.arms?.[armIndex];
+        // Get current value based on 2D or 3D
         let currentVal: number | undefined;
-        if (wallType === 'vertical') {
-            currentVal = arm?.vertical_walls?.[row]?.[col];
-        } else if (wallType === 'horizontal') {
-            currentVal = arm?.horizontal_walls?.[row]?.[col];
+        if (mazeData.maze_type === 'radial_arm_3d') {
+            const level = mazeData.levels?.[selectedLevelIndex];
+            const arm = level?.arms?.[armIndex];
+            if (wallType === 'vertical') {
+                currentVal = arm?.vertical_walls?.[row]?.[col];
+            } else if (wallType === 'horizontal') {
+                currentVal = arm?.horizontal_walls?.[row]?.[col];
+            }
+        } else {
+            const arm = mazeData.arms?.[armIndex];
+            if (wallType === 'vertical') {
+                currentVal = arm?.vertical_walls?.[row]?.[col];
+            } else if (wallType === 'horizontal') {
+                currentVal = arm?.horizontal_walls?.[row]?.[col];
+            }
         }
         if (currentVal === selectedWallElementValue) return;
 
         const gridType = wallType === 'vertical' ? 'vertical_walls' : 'horizontal_walls';
 
         try {
-            const { text, data } = await updateRadialArmCell(input, armIndex, row, col, selectedWallElementValue, gridType);
+            const levelIndex = mazeData.maze_type === 'radial_arm_3d' ? selectedLevelIndex : undefined;
+            const { text, data } = await updateRadialArmCell(input, armIndex, row, col, selectedWallElementValue, gridType, levelIndex);
             setInput(text);
             setMazeData(data);
             setError(null);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedWallElementValue]);
+    }, [mazeData, input, selectedWallElementValue, selectedLevelIndex]);
 
     // Resize the maze
     const resize = useCallback(async (rows: number, cols: number) => {
@@ -292,7 +317,8 @@ export function useMaze(): UseMazeResult {
 
     // Resize a specific arm in radial_arm maze
     const resizeArm = useCallback(async (armIndex: number, width: number, length: number) => {
-        if (!mazeData || mazeData.maze_type !== 'radial_arm') return;
+        if (!mazeData) return;
+        if (mazeData.maze_type !== 'radial_arm' && mazeData.maze_type !== 'radial_arm_3d') return;
 
         try {
             const { text, data } = await resizeRadialArm(
@@ -310,7 +336,8 @@ export function useMaze(): UseMazeResult {
 
     // Set the number of arms in radial_arm maze
     const setArmCount = useCallback(async (count: number) => {
-        if (!mazeData || mazeData.maze_type !== 'radial_arm') return;
+        if (!mazeData) return;
+        if (mazeData.maze_type !== 'radial_arm' && mazeData.maze_type !== 'radial_arm_3d') return;
         if (count < 1) return;
 
         try {
@@ -329,7 +356,8 @@ export function useMaze(): UseMazeResult {
 
     // Set the hub angle degrees in radial_arm maze
     const setAngle = useCallback(async (degrees: number) => {
-        if (!mazeData || mazeData.maze_type !== 'radial_arm') return;
+        if (!mazeData) return;
+        if (mazeData.maze_type !== 'radial_arm' && mazeData.maze_type !== 'radial_arm_3d') return;
         if (degrees < 1 || degrees > 360) return;
 
         try {
@@ -344,7 +372,8 @@ export function useMaze(): UseMazeResult {
 
     // Set the hub size (radius or side_length) in radial_arm maze
     const setHubSize = useCallback(async (size: number) => {
-        if (!mazeData || mazeData.maze_type !== 'radial_arm') return;
+        if (!mazeData) return;
+        if (mazeData.maze_type !== 'radial_arm' && mazeData.maze_type !== 'radial_arm_3d') return;
         if (size <= 0) return;
 
         try {
@@ -379,6 +408,30 @@ export function useMaze(): UseMazeResult {
             setError(String(err));
         }
     }, [mazeData, input]);
+
+    // Set the number of levels in 3D maze
+    const setLevelCountAction = useCallback(async (count: number) => {
+        if (!mazeData) return;
+        if (!is3DMazeType(mazeData.maze_type)) return;
+        if (count < 1) return;
+
+        try {
+            const { text, data } = await setLevelCount(
+                input, count,
+                selectedElementValue,
+                selectedWallElementValue
+            );
+            setInput(text);
+            setMazeData(data);
+            setError(null);
+            // Adjust selected level if it's now out of bounds
+            if (selectedLevelIndex >= count) {
+                setSelectedLevelIndex(count - 1);
+            }
+        } catch (err) {
+            setError(String(err));
+        }
+    }, [mazeData, input, selectedElementValue, selectedWallElementValue, selectedLevelIndex]);
 
     // Create a new maze
     const create = useCallback(async (type: MazeType, hubType?: 'circular' | 'polygon') => {
@@ -427,6 +480,7 @@ export function useMaze(): UseMazeResult {
         setAngle,
         setHubSize,
         addNewElement,
+        setLevelCountAction,
         create,
         clearError,
     };

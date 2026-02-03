@@ -22,3 +22,6 @@ export type { LayerToggleProps } from './LayerToggle';
 
 export { LevelSelector } from './LevelSelector';
 export type { LevelSelectorProps } from './LevelSelector';
+
+export { LevelCountControl } from './LevelCountControl';
+export type { LevelCountControlProps } from './LevelCountControl';

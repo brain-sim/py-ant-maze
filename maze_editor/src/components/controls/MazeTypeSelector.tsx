@@ -6,7 +6,7 @@
  */
 
 import clsx from 'clsx';
-import { Box, Layers } from 'lucide-react';
+import { Square, Layers } from 'lucide-react';
 import type { MazeType, MazeType2D, MazeType3D } from '../../types/maze';
 import { is3DMazeType, getBase2DType } from '../../types/maze';
 
@@ -65,7 +65,7 @@ export function MazeTypeSelector({ currentType, currentHubShape, onChange }: Maz
                                     : "text-slate-500 hover:text-white"
                             )}
                         >
-                            <Box size={12} />
+                            <Square size={12} />
                         </button>
                         <button
                             onClick={() => handle3DToggle(true)}
