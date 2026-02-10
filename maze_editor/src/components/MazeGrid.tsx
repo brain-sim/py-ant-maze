@@ -187,7 +187,7 @@ export function MazeGrid({
             <div
                 className={clsx('inline-block bg-slate-900/50 p-2 rounded-xl transition-all', className)}
                 onMouseLeave={() => setIsDrawing(false)}
-                style={{ display: 'grid', gridTemplateColumns: `repeat(${w}, ${T}px ${S}px) ${T}px`, gridTemplateRows: `repeat(${h}, ${T}px ${S}px) ${T}px` }}
+                style={{ display: 'grid', gridTemplateColumns: `repeat(${w}, ${T}px ${S}px) ${T}px`, gridTemplateRows: `repeat(${h}, ${T}px ${S}px) ${T}px`, overflow: 'visible' }}
             >
                 {Array.from({ length: h * 2 + 1 }).map((_, r) => {
                     const isWallRow = r % 2 === 0;
@@ -204,9 +204,10 @@ export function MazeGrid({
                         }
 
                         if (isWallRow) {
-                            // Horizontal Wall - extend to cover corners
+                            // Horizontal Wall - extend solid walls to cover corners
                             const val = horizontal_walls[rIndex][cIndex];
                             const el = wallElementMap.get(val);
+                            const isSolid = val > 0;
                             const { className: colorClass, style: colorStyle } = generateColorStyle(el?.name || 'unknown', 'wall');
                             return (
                                 <div
@@ -215,7 +216,7 @@ export function MazeGrid({
                                     onMouseEnter={() => handleMouseEnter(rIndex, cIndex, 'horizontal')}
                                     style={{
                                         ...colorStyle,
-                                        ...({ width: S + T, marginLeft: -T / 2, marginRight: -T / 2, zIndex: 1 })
+                                        ...(isSolid ? { width: S + 2 * T, marginLeft: -T, marginRight: -T, zIndex: 1 } : {})
                                     }}
                                     className={clsx('cursor-pointer transition-all hover:brightness-125 relative', colorClass)}
                                     title={`H-Wall (${rIndex}, ${cIndex})`}
@@ -224,9 +225,10 @@ export function MazeGrid({
                         }
 
                         if (isWallCol) {
-                            // Vertical Wall - extend to cover corners
+                            // Vertical Wall - extend solid walls to cover corners
                             const val = vertical_walls[rIndex][cIndex];
                             const el = wallElementMap.get(val);
+                            const isSolid = val > 0;
                             const { className: colorClass, style: colorStyle } = generateColorStyle(el?.name || 'unknown', 'wall');
                             return (
                                 <div
@@ -235,7 +237,7 @@ export function MazeGrid({
                                     onMouseEnter={() => handleMouseEnter(rIndex, cIndex, 'vertical')}
                                     style={{
                                         ...colorStyle,
-                                        ...({ height: S + T, marginTop: -T / 2, marginBottom: -T / 2, zIndex: 1 })
+                                        ...(isSolid ? { height: S + 2 * T, alignSelf: 'center', zIndex: 1 } : {})
                                     }}
                                     className={clsx('cursor-pointer transition-all hover:brightness-125 relative', colorClass)}
                                     title={`V-Wall (${rIndex}, ${cIndex})`}

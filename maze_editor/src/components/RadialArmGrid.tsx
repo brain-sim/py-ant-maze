@@ -255,7 +255,9 @@ export function RadialArmGrid({
         const armWidth = arm.cells.length; // rows = width of arm (perpendicular to direction)
         const armLength = arm.cells[0]?.length || 0; // cols = length extending from hub
 
-        const allElements: React.ReactNode[] = [];
+        const cellElements: React.ReactNode[] = [];
+        const openWalls: React.ReactNode[] = [];
+        const solidWalls: React.ReactNode[] = [];
 
         // Render cells as rectangles
         // Local coordinate system: 
@@ -274,7 +276,7 @@ export function RadialArmGrid({
                 const localX = (row - (armWidth - 1) / 2) * cellSize;
                 const localY = col * cellSize;
 
-                allElements.push(
+                cellElements.push(
                     <rect
                         key={`cell-${armIdx}-${row}-${col}`}
                         x={localX - cellSize / 2}
@@ -310,12 +312,13 @@ export function RadialArmGrid({
                 const localY = col * cellSize;
 
                 // Rectangle across the cell at this column boundary
-                allElements.push(
+                const isSolid = value > 0;
+                (isSolid ? solidWalls : openWalls).push(
                     <rect
                         key={`vwall-${armIdx}-${row}-${col}`}
-                        x={localX - cellSize / 2}
+                        x={isSolid ? localX - cellSize / 2 - wallThickness / 2 : localX - cellSize / 2}
                         y={localY - wallThickness / 2}
-                        width={cellSize}
+                        width={isSolid ? cellSize + wallThickness : cellSize}
                         height={wallThickness}
                         fill={fill}
                         style={{ pointerEvents: selectedLayer === 'walls' ? 'auto' : 'none' }}
@@ -345,13 +348,14 @@ export function RadialArmGrid({
                 const localY = col * cellSize;
 
                 // Rectangle along the arm at this row boundary
-                allElements.push(
+                const isSolid = value > 0;
+                (isSolid ? solidWalls : openWalls).push(
                     <rect
                         key={`hwall-${armIdx}-${row}-${col}`}
                         x={localX - wallThickness / 2}
-                        y={localY}
+                        y={isSolid ? localY - wallThickness / 2 : localY}
                         width={wallThickness}
-                        height={cellSize}
+                        height={isSolid ? cellSize + wallThickness : cellSize}
                         fill={fill}
                         style={{ pointerEvents: selectedLayer === 'walls' ? 'auto' : 'none' }}
                         className={clsx(
@@ -397,7 +401,9 @@ export function RadialArmGrid({
                 key={`arm-${armIdx}`}
                 transform={`translate(${hubEdgeX}, ${hubEdgeY}) rotate(${rotationDeg})`}
             >
-                {allElements}
+                {cellElements}
+                {openWalls}
+                {solidWalls}
             </g>
         );
     };
