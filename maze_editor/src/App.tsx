@@ -19,8 +19,7 @@ function App() {
   // File operations
   const handleFileLoaded = useCallback((content: string) => {
     maze.setInput(content);
-    // Parse will be triggered by the next user action or can be called explicitly
-    maze.parse();
+    maze.parse(content);
   }, [maze]);
 
   const fileOps = useFileOperations({

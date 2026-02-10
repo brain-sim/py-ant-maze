@@ -68,7 +68,7 @@ export const generateColorStyle = (name: string, layer: 'cell' | 'wall' | 'corne
 
     const hash = hashString(name);
     // Use slightly different saturation/lightness based on layer
-    const hue = Math.abs(hash % 360);
+    const hue = (Math.abs(hash) * 137.508) % 360;
     const saturation = layer === 'wall' ? 60 : 70;
     const lightness = layer === 'wall' ? 45 : 50;
     const bg = `hsl(${hue}, ${saturation}%, ${lightness}%)`;

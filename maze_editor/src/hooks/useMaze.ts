@@ -55,8 +55,8 @@ export interface UseMazeActions {
     setSelectedLayer: (layer: LayerType) => void;
     /** Set the selected level index (for 3D mazes) */
     setSelectedLevelIndex: (index: number) => void;
-    /** Parse the current input */
-    parse: () => Promise<void>;
+    /** Parse the current input (or provided YAML text) */
+    parse: (yamlText?: string) => Promise<void>;
     /** Format and parse the current input */
     format: () => Promise<void>;
     /** Update a cell value (for occupancy_grid and edge_grid) */
@@ -468,7 +468,7 @@ export function useMaze(): UseMazeResult {
         setSelectedWallElementValue,
         setSelectedLayer,
         setSelectedLevelIndex,
-        parse: () => parse(),
+        parse: (yamlText?: string) => parse(yamlText),
         format,
         updateCell,
         updateWall,
