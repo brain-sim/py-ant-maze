@@ -98,7 +98,7 @@ export function VisualEditor({
     }
 
     // Determine if layer toggle should be shown
-    const showLayerToggle = baseType === 'edge_grid' || baseType === 'radial_arm';
+    const showLayerToggle = !!(mazeData.wall_elements && mazeData.wall_elements.length > 0);
 
     const currentElements = selectedLayer === 'cells'
         ? mazeData.elements

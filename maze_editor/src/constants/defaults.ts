@@ -8,10 +8,11 @@
 export const DEFAULT_OCCUPANCY_YAML = `maze_type: occupancy_grid
 config:
   cell_elements:
-    - name: wall
-      token: "#"
     - name: open
       token: "."
+  wall_elements:
+    - name: wall
+      token: "#"
 layout:
   grid: |
     ___ 0 1 2 3 4 5 6 7
@@ -214,12 +215,13 @@ config:
   cell_elements:
     - name: open
       token: '.'
-    - name: wall
-      token: '#'
     - name: elevator
       token: 'E'
     - name: escalator
       token: 'S'
+  wall_elements:
+    - name: wall
+      token: '#'
 layout:
   levels:
     - id: ground

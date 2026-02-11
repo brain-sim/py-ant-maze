@@ -148,6 +148,10 @@ def _extract_maze_data(maze):
             {'name': e.name, 'token': e.token, 'value': e.value}
             for e in maze.config.cell_elements.elements()
         ]
+        data['wall_elements'] = [
+            {'name': e.name, 'token': e.token, 'value': e.value}
+            for e in maze.config.wall_elements.elements()
+        ]
     elif maze.maze_type == 'edge_grid':
         data['cells'] = maze.layout.cells
         data['vertical_walls'] = maze.layout.vertical_walls
@@ -659,8 +663,12 @@ new_name_str = str(new_name)
 new_token_str = str(new_token)
 element_type_str = str(element_type)
 
-data_dict = yaml.safe_load(yaml_text_str)
-if 'config' not in data_dict:
+# Parse first so implicit/default values are materialized before assignment.
+maze = Maze.from_text(yaml_text_str)
+data_dict = yaml.safe_load(maze.to_text(with_grid_numbers=True))
+if not isinstance(data_dict, dict):
+    raise TypeError("maze YAML must be a mapping")
+if 'config' not in data_dict or not isinstance(data_dict['config'], dict):
     data_dict['config'] = {}
 
 key = 'cell_elements' if element_type_str == 'cell' else 'wall_elements'
@@ -668,6 +676,9 @@ if key not in data_dict['config']:
     data_dict['config'][key] = []
 
 elements = data_dict['config'][key]
+other_key = 'wall_elements' if key == 'cell_elements' else 'cell_elements'
+other_elements = data_dict['config'].get(other_key, [])
+maze_type = str(data_dict.get('maze_type', ''))
 
 for el in elements:
     if el.get('name') == new_name_str:
@@ -675,7 +686,29 @@ for el in elements:
     if el.get('token') == new_token_str:
         raise ValueError(f"Element with token '{new_token_str}' already exists in {key}")
 
-elements.append({'name': new_name_str, 'token': new_token_str})
+# Occupancy grids use one shared grid, so tokens must be unique across both sets.
+if 'occupancy_grid' in maze_type:
+    for el in other_elements:
+        if el.get('token') == new_token_str:
+            raise ValueError(
+                f"Element with token '{new_token_str}' already exists in {other_key} "
+                "(occupancy grids require unique tokens across cell and wall elements)"
+            )
+
+# Collect all used values from both element sets to avoid conflicts
+used_values = set()
+for k in ('cell_elements', 'wall_elements'):
+    for el in data_dict['config'].get(k, []):
+        v = el.get('value')
+        if isinstance(v, int):
+            used_values.add(v)
+
+# Find the next available value (starting from 0)
+new_value = 0
+while new_value in used_values:
+    new_value += 1
+
+elements.append({'name': new_name_str, 'token': new_token_str, 'value': new_value})
 
 # Convert to ensure proper Python dict with string keys
 data_dict_clean = json.loads(json.dumps(data_dict))

@@ -153,9 +153,12 @@ export function MazeGrid({
             >
                 {grid.map((row, rIndex) =>
                     row.map((cellValue, cIndex) => {
-                        const element = cellElementMap.get(cellValue);
+                        const cellEl = cellElementMap.get(cellValue);
+                        const wallEl = wallElementMap.get(cellValue);
+                        const element = cellEl || wallEl;
+                        const layer: 'cell' | 'wall' = wallEl && !cellEl ? 'wall' : 'cell';
                         const name = element?.name || 'unknown';
-                        const { className: colorClass, style: colorStyle } = generateColorStyle(name);
+                        const { className: colorClass, style: colorStyle } = generateColorStyle(name, layer);
 
                         return (
                             <div

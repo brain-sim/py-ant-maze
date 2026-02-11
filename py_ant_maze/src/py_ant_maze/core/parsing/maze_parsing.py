@@ -1,4 +1,4 @@
-from typing import Dict, Optional, TypeAlias
+from typing import Dict, Optional, Set, TypeAlias
 
 from ..structures.element_set import ElementSet
 from ..structures.elements import CellElement, WallElement
@@ -6,6 +6,7 @@ from ..types import ConfigSpec, CellGrid, WallGrid
 
 
 ElementDefaults: TypeAlias = Dict[str, int]
+BlockedValues: TypeAlias = Set[int]
 
 
 def parse_cell_elements(
@@ -13,6 +14,7 @@ def parse_cell_elements(
     *,
     allow_elements_alias: bool = True,
     reserved_defaults: Optional[ElementDefaults] = None,
+    blocked_values: Optional[BlockedValues] = None,
 ) -> ElementSet:
     if not isinstance(mapping, dict):
         raise TypeError("config must be a mapping")
@@ -22,13 +24,19 @@ def parse_cell_elements(
     if items is None:
         raise ValueError("config.cell_elements is required")
     reserved_defaults = reserved_defaults or {"open": 0, "wall": 1}
-    return ElementSet.from_list(items, CellElement, reserved_defaults=reserved_defaults)
+    return ElementSet.from_list(
+        items,
+        CellElement,
+        reserved_defaults=reserved_defaults,
+        blocked_values=blocked_values,
+    )
 
 
 def parse_wall_elements(
     mapping: ConfigSpec,
     *,
     reserved_defaults: Optional[ElementDefaults] = None,
+    blocked_values: Optional[BlockedValues] = None,
 ) -> ElementSet:
     if not isinstance(mapping, dict):
         raise TypeError("config must be a mapping")
@@ -36,7 +44,12 @@ def parse_wall_elements(
     if items is None:
         raise ValueError("config.wall_elements is required")
     reserved_defaults = reserved_defaults or {"open": 0, "wall": 1}
-    return ElementSet.from_list(items, WallElement, reserved_defaults=reserved_defaults)
+    return ElementSet.from_list(
+        items,
+        WallElement,
+        reserved_defaults=reserved_defaults,
+        blocked_values=blocked_values,
+    )
 
 
 def validate_edge_grid_dimensions(

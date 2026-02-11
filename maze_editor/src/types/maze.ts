@@ -85,7 +85,7 @@ export interface MazeData {
     connectors?: LevelConnector[];
     /** Cell elements configuration */
     elements: MazeElement[];
-    /** Wall elements configuration (edge_grid and radial_arm) */
+    /** Wall elements configuration (occupancy_grid, edge_grid, radial_arm) */
     wall_elements?: MazeElement[];
     /** Raw config object */
     config: Record<string, unknown>;

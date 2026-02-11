@@ -204,10 +204,11 @@ Transitions:
 maze_type: occupancy_grid
 config:
   cell_elements:
-    - name: wall
-      token: '#'
     - name: open
       token: '.'
+  wall_elements:
+    - name: wall
+      token: '#'
 layout:
   grid: |
     ___ 0 1 2 3 4
@@ -255,7 +256,8 @@ Grid numbering (optional):
 - Values must be unique within each element set
 
 **Occupancy Grid**
-- `config.cell_elements`: cell tokens (required)
+- `config.cell_elements`: non-wall cell tokens (required)
+- `config.wall_elements`: wall tokens (required)
 - `layout.grid`: cell grid
 
 **Edge Grid**

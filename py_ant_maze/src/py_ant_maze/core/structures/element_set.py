@@ -77,6 +77,7 @@ class ElementSet:
         items: ElementSpecList,
         element_cls: Type[MazeElement],
         reserved_defaults: Optional[ElementDefaults] = None,
+        blocked_values: Optional[ElementValueSet] = None,
     ) -> "ElementSet":
         if not isinstance(items, list):
             raise TypeError("elements must be a list")
@@ -84,6 +85,7 @@ class ElementSet:
             raise ValueError("elements list cannot be empty")
 
         reserved_defaults = reserved_defaults or {}
+        blocked_values = set(blocked_values or set())
         parsed: ElementList = []
         used_values: ElementValueSet = set()
         explicit_values: ElementValueSet = set()
@@ -103,6 +105,8 @@ class ElementSet:
             else:
                 if not isinstance(value, int):
                     raise TypeError("element value must be an integer")
+                if value in blocked_values:
+                    raise ValueError(f"element value is reserved: {value}")
                 if value in explicit_values:
                     raise ValueError(f"duplicate element value: {value}")
                 explicit_values.add(value)
@@ -121,9 +125,16 @@ class ElementSet:
                     if value in explicit_values:
                         raise ValueError(f"reserved value already used: {value}")
                 else:
-                    blocked = used_values.union(explicit_values).union(reserved_values.values())
+                    blocked = (
+                        used_values
+                        .union(explicit_values)
+                        .union(reserved_values.values())
+                        .union(blocked_values)
+                    )
                     value = _next_available_value(blocked)
 
+            if value in blocked_values:
+                raise ValueError(f"element value is reserved: {value}")
             if value in used_values:
                 raise ValueError(f"duplicate element value: {value}")
 

@@ -147,6 +147,13 @@ export function useMaze(): UseMazeResult {
         if (mazeData.maze_type === 'radial_arm' || mazeData.maze_type === 'radial_arm_3d') return; // Use updateRadialCell instead
 
         const is3D = is3DMazeType(mazeData.maze_type);
+        const isOccupancyGrid = mazeData.maze_type === 'occupancy_grid' || mazeData.maze_type === 'occupancy_grid_3d';
+
+        // For occupancy_grid, cells and walls share the same grid.
+        // Use the wall element value when the walls layer is selected.
+        const paintValue = (isOccupancyGrid && selectedLayer === 'walls')
+            ? selectedWallElementValue
+            : selectedElementValue;
 
         // Get current value based on maze type
         let currentVal: number | undefined;
@@ -164,14 +171,14 @@ export function useMaze(): UseMazeResult {
                 currentVal = mazeData.cells?.[row][col];
             }
         }
-        if (currentVal === selectedElementValue) return;
+        if (currentVal === paintValue) return;
 
         try {
             let result;
             if (is3D) {
-                result = await update3DMazeCell(input, selectedLevelIndex, row, col, selectedElementValue, 'cells');
+                result = await update3DMazeCell(input, selectedLevelIndex, row, col, paintValue, isOccupancyGrid ? 'grid' : 'cells');
             } else {
-                result = await updateMaze(input, row, col, selectedElementValue, 'cells');
+                result = await updateMaze(input, row, col, paintValue, isOccupancyGrid ? 'grid' : 'cells');
             }
             setInput(result.text);
             setMazeData(result.data);
@@ -179,7 +186,7 @@ export function useMaze(): UseMazeResult {
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedElementValue, selectedLevelIndex]);
+    }, [mazeData, input, selectedElementValue, selectedWallElementValue, selectedLayer, selectedLevelIndex]);
 
     // Update a wall (edge_grid and edge_grid_3d)
     const updateWall = useCallback(async (
