@@ -22,6 +22,7 @@ import {
 export type { MazeData, MazeResult };
 
 let pyodide: PyodideInterface | null = null;
+let pyodideInitPromise: Promise<PyodideInterface> | null = null;
 
 const WHEEL_URL = "/py_ant_maze-0.1.1-py3-none-any.whl";
 
@@ -31,22 +32,23 @@ const WHEEL_URL = "/py_ant_maze-0.1.1-py3-none-any.whl";
  */
 export async function getPyodide(): Promise<PyodideInterface> {
     if (pyodide) return pyodide;
+    if (!pyodideInitPromise) {
+        pyodideInitPromise = (async () => {
+            const instance = await loadPyodide({
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/",
+            });
 
-    pyodide = await loadPyodide({
-        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/",
-    });
+            await instance.loadPackage("micropip");
+            const micropip = instance.pyimport("micropip");
 
-    await pyodide.loadPackage("micropip");
-    const micropip = pyodide.pyimport("micropip");
+            // Install PyYAML first (required dependency)
+            await micropip.install("PyYAML");
 
-    // Install PyYAML first (required dependency)
-    await micropip.install("PyYAML");
+            // Install py_ant_maze from local wheel
+            await micropip.install(window.location.origin + WHEEL_URL);
 
-    // Install py_ant_maze from local wheel
-    await micropip.install(window.location.origin + WHEEL_URL);
-
-    // Initialize the module and define helper function
-    pyodide.runPython(`
+            // Initialize the module and define helper function
+            instance.runPython(`
 import json
 import yaml
 from py_ant_maze import Maze
@@ -123,7 +125,7 @@ def _extract_maze_data(maze):
             for e in maze.config.cell_elements.elements()
         ]
         
-        # Wall elements for edge_grid_3d and radial_arm_3d
+        # Wall elements for maze types that define a wall element set
         if hasattr(maze.config, 'wall_elements'):
             data['wall_elements'] = [
                 {'name': e.name, 'token': e.token, 'value': e.value}
@@ -205,7 +207,14 @@ def _maze_to_result(maze):
 print("py_ant_maze loaded successfully")
   `);
 
-    return pyodide;
+            pyodide = instance;
+            return instance;
+        })().catch((error) => {
+            pyodideInitPromise = null;
+            throw error;
+        });
+    }
+    return pyodideInitPromise;
 }
 
 
@@ -756,51 +765,6 @@ elif 'edge_grid' in maze.maze_type:
         layout.vertical_walls[row][col] = value
     elif grid_type == 'horizontal_walls':
         layout.horizontal_walls[row][col] = value
-
-maze = maze.freeze()
-json.dumps(_maze_to_result(maze))
-  `);
-
-    return JSON.parse(jsonResult);
-}
-
-/**
- * Update a cell or wall within a specific arm of a specific level in radial_arm_3d.
- */
-export async function update3DRadialArmCell(
-    yamlText: string,
-    levelIndex: number,
-    armIndex: number,
-    row: number,
-    col: number,
-    value: number,
-    gridType: 'cells' | 'vertical_walls' | 'horizontal_walls' = 'cells'
-): Promise<MazeResult> {
-    const py = await getPyodide();
-    py.globals.set("yaml_text", yamlText);
-    py.globals.set("level_index", levelIndex);
-    py.globals.set("arm_index", armIndex);
-    py.globals.set("row", row);
-    py.globals.set("col", col);
-    py.globals.set("value", value);
-    py.globals.set("grid_type", gridType);
-
-    const jsonResult = py.runPython(`
-# Use MazeDraft for mutable access
-maze = Maze.from_text(yaml_text).thaw()
-
-if 'radial_arm' not in maze.maze_type:
-    raise ValueError('update3DRadialArmCell only works with radial_arm mazes')
-
-level = maze.layout.levels[level_index]
-arm = level.layout.arms[arm_index]
-
-if grid_type == 'cells':
-    arm.cells[row][col] = value
-elif grid_type == 'vertical_walls':
-    arm.vertical_walls[row][col] = value
-elif grid_type == 'horizontal_walls':
-    arm.horizontal_walls[row][col] = value
 
 maze = maze.freeze()
 json.dumps(_maze_to_result(maze))

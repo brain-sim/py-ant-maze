@@ -36,7 +36,7 @@ export interface UseMazeState {
     mazeData: MazeData | null;
     /** Selected cell element value */
     selectedElementValue: number;
-    /** Selected wall element value (edge_grid only) */
+    /** Selected wall element value */
     selectedWallElementValue: number;
     /** Currently selected layer (cells or walls) */
     selectedLayer: LayerType;
@@ -97,10 +97,48 @@ export function useMaze(): UseMazeResult {
     const [error, setError] = useState<string | null>(null);
     const [input, setInput] = useState(DEFAULT_OCCUPANCY_YAML);
     const [mazeData, setMazeData] = useState<MazeData | null>(null);
-    const [selectedElementValue, setSelectedElementValue] = useState(1);
+    const [selectedElementValue, setSelectedElementValue] = useState(0);
     const [selectedWallElementValue, setSelectedWallElementValue] = useState(1);
     const [selectedLayer, setSelectedLayer] = useState<LayerType>('cells');
     const [selectedLevelIndex, setSelectedLevelIndex] = useState(0);
+
+    const syncSelectionState = useCallback((data: MazeData) => {
+        const cellElements = data.elements ?? [];
+        const wallElements = data.wall_elements ?? [];
+
+        if (cellElements.length > 0) {
+            const validCellValues = new Set(cellElements.map((el) => el.value));
+            setSelectedElementValue((prev) => (
+                validCellValues.has(prev) ? prev : cellElements[0].value
+            ));
+        }
+
+        if (wallElements.length > 0) {
+            const validWallValues = new Set(wallElements.map((el) => el.value));
+            setSelectedWallElementValue((prev) => (
+                validWallValues.has(prev) ? prev : wallElements[0].value
+            ));
+        }
+
+        setSelectedLayer((prev) => (
+            prev === 'walls' && wallElements.length === 0 ? 'cells' : prev
+        ));
+
+        if (is3DMazeType(data.maze_type)) {
+            const levelCount = data.levels?.length ?? 0;
+            const maxIndex = Math.max(0, levelCount - 1);
+            setSelectedLevelIndex((prev) => Math.min(prev, maxIndex));
+        } else {
+            setSelectedLevelIndex(0);
+        }
+    }, []);
+
+    const applyMazeResult = useCallback((result: { text: string; data: MazeData }) => {
+        setInput(result.text);
+        setMazeData(result.data);
+        syncSelectionState(result.data);
+        setError(null);
+    }, [syncSelectionState]);
 
     // Parse YAML and update maze data
     const parse = useCallback(async (yamlText?: string) => {
@@ -108,26 +146,28 @@ export function useMaze(): UseMazeResult {
             const textToParse = yamlText ?? input;
             const { data } = await parseMaze(textToParse);
             setMazeData(data);
+            syncSelectionState(data);
             setError(null);
         } catch (err) {
             setError(String(err));
             setMazeData(null);
         }
-    }, [input]);
+    }, [input, syncSelectionState]);
 
     // Initialize Pyodide and parse default maze
     useEffect(() => {
         getPyodide()
-            .then(() => {
+            .then(async () => {
                 setLoading(false);
-                parse(DEFAULT_OCCUPANCY_YAML);
+                const result = await parseMaze(DEFAULT_OCCUPANCY_YAML);
+                applyMazeResult(result);
             })
             .catch((err) => {
                 console.error(err);
                 setError("Failed to load Pyodide: " + err.message);
                 setLoading(false);
             });
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [applyMazeResult]);
 
     // Format and parse
     const format = useCallback(async () => {
@@ -180,13 +220,11 @@ export function useMaze(): UseMazeResult {
             } else {
                 result = await updateMaze(input, row, col, paintValue, isOccupancyGrid ? 'grid' : 'cells');
             }
-            setInput(result.text);
-            setMazeData(result.data);
-            setError(null);
+            applyMazeResult(result);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedElementValue, selectedWallElementValue, selectedLayer, selectedLevelIndex]);
+    }, [mazeData, input, selectedElementValue, selectedWallElementValue, selectedLayer, selectedLevelIndex, applyMazeResult]);
 
     // Update a wall (edge_grid and edge_grid_3d)
     const updateWall = useCallback(async (
@@ -226,13 +264,11 @@ export function useMaze(): UseMazeResult {
             } else {
                 result = await updateMaze(input, row, col, selectedWallElementValue, gridType);
             }
-            setInput(result.text);
-            setMazeData(result.data);
-            setError(null);
+            applyMazeResult(result);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedWallElementValue, selectedLevelIndex]);
+    }, [mazeData, input, selectedWallElementValue, selectedLevelIndex, applyMazeResult]);
 
     // Update a radial_arm cell
     const updateRadialCell = useCallback(async (
@@ -256,14 +292,12 @@ export function useMaze(): UseMazeResult {
 
         try {
             const levelIndex = mazeData.maze_type === 'radial_arm_3d' ? selectedLevelIndex : undefined;
-            const { text, data } = await updateRadialArmCell(input, armIndex, row, col, selectedElementValue, 'cells', levelIndex);
-            setInput(text);
-            setMazeData(data);
-            setError(null);
+            const result = await updateRadialArmCell(input, armIndex, row, col, selectedElementValue, 'cells', levelIndex);
+            applyMazeResult(result);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedElementValue, selectedLevelIndex]);
+    }, [mazeData, input, selectedElementValue, selectedLevelIndex, applyMazeResult]);
 
     // Update a radial_arm wall
     const updateRadialWall = useCallback(async (
@@ -299,28 +333,24 @@ export function useMaze(): UseMazeResult {
 
         try {
             const levelIndex = mazeData.maze_type === 'radial_arm_3d' ? selectedLevelIndex : undefined;
-            const { text, data } = await updateRadialArmCell(input, armIndex, row, col, selectedWallElementValue, gridType, levelIndex);
-            setInput(text);
-            setMazeData(data);
-            setError(null);
+            const result = await updateRadialArmCell(input, armIndex, row, col, selectedWallElementValue, gridType, levelIndex);
+            applyMazeResult(result);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedWallElementValue, selectedLevelIndex]);
+    }, [mazeData, input, selectedWallElementValue, selectedLevelIndex, applyMazeResult]);
 
     // Resize the maze
     const resize = useCallback(async (rows: number, cols: number) => {
         if (!mazeData) return;
 
         try {
-            const { text, data } = await resizeMaze(input, rows, cols, selectedElementValue);
-            setInput(text);
-            setMazeData(data);
-            setError(null);
+            const result = await resizeMaze(input, rows, cols, selectedElementValue);
+            applyMazeResult(result);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedElementValue]);
+    }, [mazeData, input, selectedElementValue, applyMazeResult]);
 
     // Resize a specific arm in radial_arm maze
     const resizeArm = useCallback(async (armIndex: number, width: number, length: number) => {
@@ -328,18 +358,16 @@ export function useMaze(): UseMazeResult {
         if (mazeData.maze_type !== 'radial_arm' && mazeData.maze_type !== 'radial_arm_3d') return;
 
         try {
-            const { text, data } = await resizeRadialArm(
+            const result = await resizeRadialArm(
                 input, armIndex, width, length,
                 selectedElementValue,
                 selectedWallElementValue
             );
-            setInput(text);
-            setMazeData(data);
-            setError(null);
+            applyMazeResult(result);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedElementValue, selectedWallElementValue]);
+    }, [mazeData, input, selectedElementValue, selectedWallElementValue, applyMazeResult]);
 
     // Set the number of arms in radial_arm maze
     const setArmCount = useCallback(async (count: number) => {
@@ -348,18 +376,16 @@ export function useMaze(): UseMazeResult {
         if (count < 1) return;
 
         try {
-            const { text, data } = await setRadialArmCount(
+            const result = await setRadialArmCount(
                 input, count,
                 selectedElementValue,
                 selectedWallElementValue
             );
-            setInput(text);
-            setMazeData(data);
-            setError(null);
+            applyMazeResult(result);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedElementValue, selectedWallElementValue]);
+    }, [mazeData, input, selectedElementValue, selectedWallElementValue, applyMazeResult]);
 
     // Set the hub angle degrees in radial_arm maze
     const setAngle = useCallback(async (degrees: number) => {
@@ -368,14 +394,12 @@ export function useMaze(): UseMazeResult {
         if (degrees < 1 || degrees > 360) return;
 
         try {
-            const { text, data } = await setRadialArmAngle(input, degrees);
-            setInput(text);
-            setMazeData(data);
-            setError(null);
+            const result = await setRadialArmAngle(input, degrees);
+            applyMazeResult(result);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input]);
+    }, [mazeData, input, applyMazeResult]);
 
     // Set the hub size (radius or side_length) in radial_arm maze
     const setHubSize = useCallback(async (size: number) => {
@@ -384,14 +408,12 @@ export function useMaze(): UseMazeResult {
         if (size <= 0) return;
 
         try {
-            const { text, data } = await setRadialArmHubSize(input, size);
-            setInput(text);
-            setMazeData(data);
-            setError(null);
+            const result = await setRadialArmHubSize(input, size);
+            applyMazeResult(result);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input]);
+    }, [mazeData, input, applyMazeResult]);
 
     // Add a new element
     const addNewElement = useCallback(async (
@@ -407,14 +429,12 @@ export function useMaze(): UseMazeResult {
         }
 
         try {
-            const { text, data } = await addElement(input, name, token, type);
-            setInput(text);
-            setMazeData(data);
-            setError(null);
+            const result = await addElement(input, name, token, type);
+            applyMazeResult(result);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input]);
+    }, [mazeData, input, applyMazeResult]);
 
     // Set the number of levels in 3D maze
     const setLevelCountAction = useCallback(async (count: number) => {
@@ -423,39 +443,27 @@ export function useMaze(): UseMazeResult {
         if (count < 1) return;
 
         try {
-            const { text, data } = await setLevelCount(
+            const result = await setLevelCount(
                 input, count,
                 selectedElementValue,
                 selectedWallElementValue
             );
-            setInput(text);
-            setMazeData(data);
-            setError(null);
-            // Adjust selected level if it's now out of bounds
-            if (selectedLevelIndex >= count) {
-                setSelectedLevelIndex(count - 1);
-            }
+            applyMazeResult(result);
         } catch (err) {
             setError(String(err));
         }
-    }, [mazeData, input, selectedElementValue, selectedWallElementValue, selectedLevelIndex]);
+    }, [mazeData, input, selectedElementValue, selectedWallElementValue, applyMazeResult]);
 
     // Create a new maze
     const create = useCallback(async (type: MazeType, hubType?: 'circular' | 'polygon') => {
         try {
-            const { text, data } = await createNewMaze(type, hubType);
-            setInput(text);
-            setMazeData(data);
-            setError(null);
-
-            // Reset selections
+            const result = await createNewMaze(type, hubType);
+            applyMazeResult(result);
             setSelectedLayer('cells');
-            if (data.elements?.[0]) setSelectedElementValue(data.elements[0].value);
-            if (data.wall_elements?.[0]) setSelectedWallElementValue(data.wall_elements[0].value);
         } catch (err) {
             setError(String(err));
         }
-    }, []);
+    }, [applyMazeResult]);
 
     const clearError = useCallback(() => setError(null), []);
 
@@ -475,7 +483,7 @@ export function useMaze(): UseMazeResult {
         setSelectedWallElementValue,
         setSelectedLayer,
         setSelectedLevelIndex,
-        parse: (yamlText?: string) => parse(yamlText),
+        parse,
         format,
         updateCell,
         updateWall,

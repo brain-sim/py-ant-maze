@@ -10,8 +10,8 @@ import { Plus } from 'lucide-react';
 import type { LayerType, ElementType } from '../../types/maze';
 
 export interface AddElementFormProps {
-    /** Whether this is an edge_grid maze (shows layer toggle) */
-    isEdgeGrid: boolean;
+    /** Whether to show cell/wall layer toggle for element creation */
+    showLayerToggle: boolean;
     /** Currently selected layer */
     selectedLayer: LayerType;
     /** Callback to change selected layer */
@@ -21,7 +21,7 @@ export interface AddElementFormProps {
 }
 
 export function AddElementForm({
-    isEdgeGrid,
+    showLayerToggle,
     selectedLayer,
     onLayerChange,
     onAdd,
@@ -41,7 +41,7 @@ export function AddElementForm({
         <div className="flex flex-col gap-2 bg-slate-800/30 rounded-lg p-2 border border-white/5">
             <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-400">Add Element:</span>
-                {isEdgeGrid && (
+                {showLayerToggle && (
                     <div className="flex gap-1">
                         <button
                             onClick={() => onLayerChange('cells')}

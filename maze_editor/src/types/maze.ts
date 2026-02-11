@@ -87,8 +87,6 @@ export interface MazeData {
     elements: MazeElement[];
     /** Wall elements configuration (occupancy_grid, edge_grid, radial_arm) */
     wall_elements?: MazeElement[];
-    /** Raw config object */
-    config: Record<string, unknown>;
 }
 
 /** Result from parsing or updating maze */

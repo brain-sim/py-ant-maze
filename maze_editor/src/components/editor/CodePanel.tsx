@@ -187,7 +187,7 @@ export function CodePanel({
                 {/* Add Element Controls */}
                 {mazeData && (
                     <AddElementForm
-                        isEdgeGrid={!!(mazeData.wall_elements && mazeData.wall_elements.length > 0)}
+                        showLayerToggle={!!(mazeData.wall_elements && mazeData.wall_elements.length > 0)}
                         selectedLayer={selectedLayer}
                         onLayerChange={onLayerChange}
                         onAdd={onAddElement}

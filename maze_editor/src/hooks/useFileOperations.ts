@@ -41,10 +41,19 @@ export interface UseFileOperationsResult {
 }
 
 /**
- * Wait for a specified time.
+ * Wait for a browser paint cycle.
  */
-function delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+function nextAnimationFrame(): Promise<void> {
+    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+/**
+ * Wait for React state update + layout/paint to settle before capture.
+ */
+async function waitForRender(frames: number = 2): Promise<void> {
+    for (let i = 0; i < frames; i++) {
+        await nextAnimationFrame();
+    }
 }
 
 /**
@@ -103,8 +112,8 @@ export function useFileOperations({
                     // Switch to this level
                     setSelectedLevelIndex(i);
 
-                    // Wait for React to re-render the grid
-                    await delay(200);
+                    // Wait for React to commit and browser to paint.
+                    await waitForRender(3);
 
                     // Capture this level
                     const levelId = levels[i].id || `level-${i}`;

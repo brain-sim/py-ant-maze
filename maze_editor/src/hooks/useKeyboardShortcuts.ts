@@ -2,7 +2,7 @@
  * useKeyboardShortcuts Hook
  * 
  * Handles keyboard shortcuts for element selection.
- * Supports both cell and wall elements for EdgeGrid type.
+ * Supports both cell and wall element layers.
  */
 
 import { useEffect, useCallback } from 'react';
@@ -11,7 +11,7 @@ import type { MazeElement, LayerType } from '../types/maze';
 export interface UseKeyboardShortcutsOptions {
     /** Cell elements */
     cellElements: MazeElement[];
-    /** Wall elements (for edge_grid only) */
+    /** Wall elements for wall-capable maze types */
     wallElements: MazeElement[];
     /** Currently selected layer */
     selectedLayer: LayerType;
@@ -26,7 +26,7 @@ export interface UseKeyboardShortcutsOptions {
 /**
  * Hook for handling keyboard shortcuts.
  * Allows selecting elements by pressing their token key.
- * For EdgeGrid, prioritizes elements from the currently selected layer.
+ * Prioritizes elements from the currently selected layer.
  */
 export function useKeyboardShortcuts({
     cellElements,
