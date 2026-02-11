@@ -14,10 +14,19 @@ from ...core.parsing.maze_parsing import (
 from ...core.types import ConfigSpec, CellGrid, WallGrid, FrozenCellGrid, FrozenWallGrid, LayoutSpec
 
 
+# Default physical dimensions (meters)
+DEFAULT_CELL_SIZE = 1.0
+DEFAULT_WALL_HEIGHT = 0.5
+DEFAULT_WALL_THICKNESS = 0.05
+
+
 @dataclass
 class EdgeGridConfig:
     cell_elements: ElementSet
     wall_elements: ElementSet
+    cell_size: float = DEFAULT_CELL_SIZE
+    wall_height: float = DEFAULT_WALL_HEIGHT
+    wall_thickness: float = DEFAULT_WALL_THICKNESS
 
 
 @dataclass
@@ -31,6 +40,9 @@ class EdgeGridLayout:
 class FrozenEdgeGridConfig:
     cell_elements: FrozenElementSet
     wall_elements: FrozenElementSet
+    cell_size: float = DEFAULT_CELL_SIZE
+    wall_height: float = DEFAULT_WALL_HEIGHT
+    wall_thickness: float = DEFAULT_WALL_THICKNESS
 
 
 @dataclass(frozen=True)
@@ -96,6 +108,9 @@ def freeze_edge_grid_config(config: EdgeGridConfig) -> FrozenEdgeGridConfig:
     return FrozenEdgeGridConfig(
         cell_elements=config.cell_elements.freeze(),
         wall_elements=config.wall_elements.freeze(),
+        cell_size=config.cell_size,
+        wall_height=config.wall_height,
+        wall_thickness=config.wall_thickness,
     )
 
 
@@ -113,6 +128,9 @@ def thaw_edge_grid_config(config: EdgeGridConfigLike) -> EdgeGridConfig:
     return EdgeGridConfig(
         cell_elements=config.cell_elements.thaw(),
         wall_elements=config.wall_elements.thaw(),
+        cell_size=config.cell_size,
+        wall_height=config.wall_height,
+        wall_thickness=config.wall_thickness,
     )
 
 
@@ -133,16 +151,32 @@ class EdgeGridHandler(MazeTypeHandler):
     def parse_config(self, spec: ConfigSpec) -> EdgeGridConfig:
         cell_elements = parse_cell_elements(spec, allow_elements_alias=True, reserved_defaults={"open": 0})
         wall_elements = parse_wall_elements(spec, reserved_defaults={"open": 0, "wall": 1})
-        return EdgeGridConfig(cell_elements=cell_elements, wall_elements=wall_elements)
+        cell_size = spec.get("cell_size", DEFAULT_CELL_SIZE)
+        wall_height = spec.get("wall_height", DEFAULT_WALL_HEIGHT)
+        wall_thickness = spec.get("wall_thickness", DEFAULT_WALL_THICKNESS)
+        return EdgeGridConfig(
+            cell_elements=cell_elements,
+            wall_elements=wall_elements,
+            cell_size=cell_size,
+            wall_height=wall_height,
+            wall_thickness=wall_thickness,
+        )
 
     def parse_layout(self, spec: LayoutSpec, config: EdgeGridConfig) -> EdgeGridLayout:
         return parse_edge_grid_layout(spec, config)
 
     def config_to_spec(self, config: EdgeGridConfigLike) -> ConfigSpec:
-        return {
+        result: ConfigSpec = {
             "cell_elements": config.cell_elements.to_list(),
             "wall_elements": config.wall_elements.to_list(),
         }
+        if config.cell_size != DEFAULT_CELL_SIZE:
+            result["cell_size"] = config.cell_size
+        if config.wall_height != DEFAULT_WALL_HEIGHT:
+            result["wall_height"] = config.wall_height
+        if config.wall_thickness != DEFAULT_WALL_THICKNESS:
+            result["wall_thickness"] = config.wall_thickness
+        return result
 
     def layout_to_spec(
         self,

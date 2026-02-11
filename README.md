@@ -8,6 +8,7 @@ Monorepo for maze definition and editing tools.
 |---------|-------------|
 | [py_ant_maze](py_ant_maze) | Python library for defining and manipulating maze structures using YAML |
 | [maze_editor](maze_editor) | Web-based visual editor for creating mazes |
+| [maze_generator](maze_generator) | Generate USD files from maze configurations |
 
 ## Quick Start
 

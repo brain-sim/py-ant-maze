@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maze-generator"
+version = "0.1.0"
+description = "Generate USD files from py-ant-maze configurations"
+readme = "README.md"
+authors = [
+    {name = "Yihao Liu", email = "yihao.jhu@gmail.com"}
+]
+license = "MIT"
+license-files = ["../LICENSE"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = ["maze", "usd", "simulation", "isaac"]
+dependencies = [
+    "py-ant-maze",
+    "usd-core>=24.0",
+]
+requires-python = ">=3.10"
+
+[project.scripts]
+maze-generator = "maze_generator.__main__:main"
+
+[project.urls]
+"Homepage" = "https://github.com/brain-sim/py-ant-maze"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["maze_generator*"]
+exclude = ["tests*"]
