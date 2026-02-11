@@ -4,6 +4,10 @@ config:
     - name: open
       token: "0"
       value: 0
+    - name: outside
+      token: "N"
+      value: 999
+  wall_elements:
     - name: wall_1
       token: "1"
       value: 1
@@ -19,9 +23,6 @@ config:
     - name: wall_5
       token: "5"
       value: 5
-    - name: outside
-      token: "N"
-      value: 999
 layout:
   grid: |
     111222222221111111113333333111

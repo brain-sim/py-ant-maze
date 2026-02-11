@@ -1,14 +1,15 @@
 maze_type: occupancy_grid_3d
 config:
   cell_elements:
-    - name: wall
-      token: '#'
     - name: open
       token: '.'
     - name: elevator
       token: 'E'
     - name: escalator
       token: 'S'
+  wall_elements:
+    - name: wall
+      token: '#'
 layout:
   levels:
     - id: ground
