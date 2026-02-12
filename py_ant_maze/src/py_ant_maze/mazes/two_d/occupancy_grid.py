@@ -13,7 +13,7 @@ from ...core.types import CellGrid, ConfigSpec, FrozenCellGrid, LayoutSpec
 
 # Default physical dimensions (meters)
 DEFAULT_CELL_SIZE = 1.0
-DEFAULT_WALL_HEIGHT = 0.5
+DEFAULT_WALL_HEIGHT = 1.0
 
 
 @dataclass

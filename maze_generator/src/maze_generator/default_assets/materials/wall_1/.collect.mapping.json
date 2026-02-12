@@ -1,0 +1,29 @@
+{
+    "version": "1.0",
+    "file_records": [
+        {
+            "source_url": "https://omniverse-content-production.s3.us-west-2.amazonaws.com/Materials/2023_2_1/Base/Masonry/Brick_Wall_Red.mdl",
+            "source_hash": "4e0825df579f7c04bc463eba6c1e9d8b622c5e3d",
+            "target_url": "./omniverse-content-production.s3.us-west-2.amazonaws.com/Materials/2023_2_1/Base/Masonry/Brick_Wall_Red.mdl",
+            "target_hash": "6417ae17b2efb9139b42a850a4a52551e8da782e"
+        },
+        {
+            "source_url": "https://omniverse-content-production.s3.us-west-2.amazonaws.com/Materials/2023_2_1/Base/Masonry/Brick_Wall_Red/Brick_Wall_Red_BaseColor.png",
+            "source_hash": "a42d868dea01bf1878ab7d942ee3a44a9df872da",
+            "target_url": "./omniverse-content-production.s3.us-west-2.amazonaws.com/Materials/2023_2_1/Base/Masonry/Brick_Wall_Red/Brick_Wall_Red_BaseColor.png",
+            "target_hash": "8edbcc4f4bff2291d3de5b55368ee05d9d7edf8c"
+        },
+        {
+            "source_url": "https://omniverse-content-production.s3.us-west-2.amazonaws.com/Materials/2023_2_1/Base/Masonry/Brick_Wall_Red/Brick_Wall_Red_ORM.png",
+            "source_hash": "7227791d0da0203144d0894f4ac2a7574843760c",
+            "target_url": "./omniverse-content-production.s3.us-west-2.amazonaws.com/Materials/2023_2_1/Base/Masonry/Brick_Wall_Red/Brick_Wall_Red_ORM.png",
+            "target_hash": "a4a796f3710cd9259fd1c557fcbf45671a3f6f90"
+        },
+        {
+            "source_url": "https://omniverse-content-production.s3.us-west-2.amazonaws.com/Materials/2023_2_1/Base/Masonry/Brick_Wall_Red/Brick_Wall_Red_N.png",
+            "source_hash": "535c2b2f65f477307e79aa7fc5e0c0b5fd0b829c",
+            "target_url": "./omniverse-content-production.s3.us-west-2.amazonaws.com/Materials/2023_2_1/Base/Masonry/Brick_Wall_Red/Brick_Wall_Red_N.png",
+            "target_hash": "612f0c350408cac02d6a50701048039d859edb3f"
+        }
+    ]
+}

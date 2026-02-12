@@ -22,6 +22,8 @@ keywords = ["maze", "usd", "simulation", "isaac"]
 dependencies = [
     "py-ant-maze",
     "usd-core>=24.0",
+    "trimesh>=4.0.0",
+    "manifold3d>=2.5.0",
 ]
 requires-python = ">=3.10"
 
@@ -35,3 +37,6 @@ maze-generator = "maze_generator.__main__:main"
 where = ["src"]
 include = ["maze_generator*"]
 exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+maze_generator = ["default_assets/**/*"]

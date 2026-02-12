@@ -1,14 +1,11 @@
-"""CLI entry point for maze-generator.
-
-Usage:
-    maze-generator input.yaml -o output.usda [--merge]
-    python -m maze_generator input.yaml -o output.usda [--merge]
-"""
+"""CLI entry point for maze-generator."""
 
 from __future__ import annotations
 
 import argparse
-import sys
+from pathlib import Path
+
+from . import maze_to_usd
 
 
 def main() -> None:
@@ -18,7 +15,8 @@ def main() -> None:
     )
     parser.add_argument("input", help="Path to a maze YAML file")
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         default=None,
         help="Output USD file path (default: <input>.usda)",
     )
@@ -27,22 +25,18 @@ def main() -> None:
         action="store_true",
         help="Merge walls with the same element name into one mesh",
     )
-
     args = parser.parse_args()
 
-    # Determine output path
-    output = args.output
-    if output is None:
-        base = args.input.rsplit(".", 1)[0] if "." in args.input else args.input
-        output = f"{base}.usda"
+    output = args.output or _default_output_path(args.input)
+    written_path = maze_to_usd(args.input, output, merge=args.merge)
+    print(f"Wrote {written_path}")
 
-    try:
-        from . import maze_to_usd
-        maze_to_usd(args.input, output, merge=args.merge)
-        print(f"Wrote {output}")
-    except Exception as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+
+def _default_output_path(input_path: str) -> str:
+    path = Path(input_path)
+    if path.suffix:
+        return str(path.with_suffix(".usda"))
+    return f"{input_path}.usda"
 
 
 if __name__ == "__main__":

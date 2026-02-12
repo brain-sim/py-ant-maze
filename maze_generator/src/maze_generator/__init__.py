@@ -1,48 +1,64 @@
-"""Generate USD files from py-ant-maze configurations."""
+"""Public API for maze_generator."""
 
-from .types import WallBox, MazeGeometry
-from .geometry import extract_geometry
-from .usd_writer import write_usd
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from py_ant_maze import Maze
+
+from .maze_geometry.extractor import extract_geometry
+from .maze_materials.color import MaterialMap
+from .maze_materials.discovery import (
+    discover_all_default_materials,
+    discover_default_materials,
+    get_default_assets_path,
+)
+from .maze_materials.source import MaterialSource, UsdMaterialRef
+from .maze_usd.writer import write_usd
 
 __all__ = [
-    "WallBox",
-    "MazeGeometry",
-    "extract_geometry",
-    "write_usd",
+    "MaterialSource",
+    "UsdMaterialRef",
+    "discover_all_default_materials",
+    "discover_default_materials",
+    "get_default_assets_path",
     "maze_to_usd",
 ]
-__version__ = "0.1.0"
 
 
 def maze_to_usd(
-    maze_or_path,
+    maze_or_path: Maze | str | Path,
     output_path: str,
     *,
     merge: bool = False,
-    material_map=None,
+    material_map: MaterialMap | None = None,
+    material_source: MaterialSource | None = None,
 ) -> str:
-    """Load a maze and write a USD file.
-
-    Physical dimensions (cell_size, wall_height, wall_thickness)
-    are read from the maze's config section in the YAML.
-
-    Args:
-        maze_or_path: A py_ant_maze.Maze object or a path to a YAML file.
-        output_path: Where to write the .usda file.
-        merge: If True, merge all walls sharing the same element_name
-            into one mesh.
-        material_map: Optional dict mapping element_name -> (r, g, b) color.
-
-    Returns:
-        The output path.
-    """
-    from py_ant_maze import Maze
-
-    if isinstance(maze_or_path, (str,)):
-        maze = Maze.from_file(maze_or_path)
-    else:
-        maze = maze_or_path
+    maze = _coerce_maze(maze_or_path)
+    if material_source is not None and not isinstance(material_source, MaterialSource):
+        raise TypeError("material_source must be MaterialSource")
+    resolved_material_source = material_source
+    if resolved_material_source is None:
+        resolved_material_source = discover_default_materials(allow_empty=True)
 
     geometry = extract_geometry(maze)
-    write_usd(geometry, output_path, merge=merge, material_map=material_map)
-    return output_path
+    write_usd(
+        geometry,
+        output_path,
+        merge=merge,
+        material_map=material_map,
+        material_source=resolved_material_source,
+    )
+    return str(Path(output_path).resolve())
+
+
+def _coerce_maze(maze_or_path: Any):
+    if isinstance(maze_or_path, Maze):
+        return maze_or_path
+    if isinstance(maze_or_path, (str, Path)):
+        maze_path = Path(maze_or_path)
+        if not maze_path.is_file():
+            raise FileNotFoundError(f"Maze file not found: {maze_path}")
+        return Maze.from_file(str(maze_path))
+    raise TypeError("maze_or_path must be a py_ant_maze.Maze instance or a path")

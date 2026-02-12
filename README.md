@@ -1,57 +1,54 @@
 # py-ant-maze
 
-Monorepo for maze definition and editing tools.
+Monorepo for maze authoring, serialization, and USD generation.
 
 ## Packages
 
-| Package | Description |
-|---------|-------------|
-| [py_ant_maze](py_ant_maze) | Python library for defining and manipulating maze structures using YAML |
-| [maze_editor](maze_editor) | Web-based visual editor for creating mazes |
-| [maze_generator](maze_generator) | Generate USD files from maze configurations |
+| Package | Purpose |
+| --- | --- |
+| [`py_ant_maze`](py_ant_maze) | Maze model + YAML parsing/validation/editing APIs |
+| [`maze_generator`](maze_generator) | Convert maze YAML to USD with materials/textures |
+| [`maze_editor`](maze_editor) | Browser editor (React + Pyodide) for interactive maze editing |
 
-## Quick Start
+## Quick Setup
 
-### Python Library
+Install the Python packages in editable mode:
 
 ```bash
 pip install -e py_ant_maze
+pip install -e maze_generator
 ```
 
-### Web Editor
+Run the USD generator CLI:
 
 ```bash
-# Build the Python wheel
+maze-generator path/to/maze.yaml -o path/to/output.usda
+maze-generator path/to/maze.yaml --merge
+```
+
+Run the web editor:
+
+```bash
 cd py_ant_maze
-pip install build
 python -m build
 
-# Run the editor
 cd ../maze_editor
 npm install
 npm run dev
 ```
 
-## Maze Types
+## Maze Families
 
-| Type | Description | Variants |
-|------|-------------|----------|
-| **Occupancy Grid** | Classic blocked/open cell representation | 2D, 3D |
-| **Edge Grid** | Thin walls between cells | 2D, 3D |
-| **Radial Arm** | Center hub with configurable arms | 2D, 3D |
+| Family | 2D | 3D |
+| --- | --- | --- |
+| Occupancy Grid | `occupancy_grid` | `occupancy_grid_3d` |
+| Edge Grid | `edge_grid` | `edge_grid_3d` |
+| Radial Arm | `radial_arm` | `radial_arm_3d` |
 
-All types support both 2D (single layer) and 3D (multi-level with connectors).
+## Notes
 
-## Web Editor Features
-
-- **Visual Editing**: Click and drag to paint cells and walls
-- **3D Multi-Level**: Add/remove levels, switch between floors
-- **Radial Arm Controls**: Adjust hub shape/size, arm count, and per-arm dimensions
-- **Connectors**: Place elevators and escalators between levels
-- **Import/Export**: Load and save YAML files, export as PNG images
-- **Real-time Sync**: Bidirectional YAML ↔ Grid synchronization
-
-The editor runs entirely in the browser using [Pyodide](https://pyodide.org/) to interface with the Python library.
+- `maze_generator` uses strict failure behavior (no silent fallback for invalid inputs or missing required dependencies).
+- `--merge` uses boolean union and writes a single merged wall mesh with per-element material subsets.
 
 ## License
 
