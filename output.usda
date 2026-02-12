@@ -67,17 +67,10 @@ def Xform "Maze"
 
     def Xform "Materials"
     {
-        def Material "wall_1"
+        def "wall_1" (
+            prepend references = @/home/yihao/Downloads/software/wip/maze/py-ant-maze/maze_generator/src/maze_generator/default_assets/materials/wall_1/wall_1.usd@</World/Brick_Wall_Red>
+        )
         {
-            token outputs:surface.connect = </Maze/Materials/wall_1/PreviewSurface.outputs:surface>
-
-            def Shader "PreviewSurface"
-            {
-                uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.8, 0.2, 0.2)
-                float inputs:roughness = 0.7
-                token outputs:surface
-            }
         }
 
         def Material "wall_2"

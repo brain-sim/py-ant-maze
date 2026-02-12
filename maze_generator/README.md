@@ -26,7 +26,7 @@ python -m maze_generator input.yaml -o output.usda
 - `--merge`: boolean-union wall boxes and emit one mesh at `/Maze/Walls/merged_walls`
 
 Default behavior:
-- auto-discovers textures from `maze_generator/default_assets/textures` (`allow_empty=True`)
+- auto-discovers textures from `maze_generator/default_assets/textures` and USD materials from `maze_generator/default_assets/materials` (`allow_empty=True`)
 - raises explicit exceptions on invalid input or missing required dependencies
 
 ## Python API
@@ -64,16 +64,31 @@ maze_to_usd("maze.yaml", "maze_external.usda", material_source=source)
 # Discover packaged textures
 source = discover_default_materials()
 source = discover_all_default_materials()
+
+# Discover with custom USD file patterns
+source = discover_default_materials(usd_patterns=["*.usda"])
 ```
 
 ## Material Resolution Order
 
 For each element name:
-1. `MaterialSource.textures[element_name]`
-2. `MaterialSource.usd_materials[element_name]`
+1. `MaterialSource.usd_materials[element_name]`
+2. `MaterialSource.textures[element_name]`
 3. procedural preview material (`material_map` override or generated color)
 
 When `merge=True`, one mesh is emitted with per-element `UsdGeom.Subset` face groups for material binding.
+
+## USD Material Discovery
+
+- Discovery scans files recursively under `default_assets/materials` with patterns `*.usd`, `*.usda`, `*.usdc`, `*.usdz`.
+- Single-material USD file:
+  - if nested under `default_assets/materials/<element>/...`, maps to `<element>`
+  - otherwise maps by file stem
+  - Example: `default_assets/materials/wall_1/wall_1.usd` maps to element `wall_1`.
+- Multi-material USD file: each `UsdShade.Material` prim maps by prim name.
+  - Example: `/Materials/wall_2` maps to element `wall_2`.
+- If both texture and USD material are discovered for the same element, the USD material is used.
+- USD files without any `UsdShade.Material` prims raise `ValueError`.
 
 ## Failure Behavior
 
@@ -81,6 +96,7 @@ The package is fail-fast by design:
 - missing maze file -> `FileNotFoundError`
 - invalid maze spec/layout -> `ValueError` / `TypeError`
 - missing texture/USD material path -> `FileNotFoundError`
+- invalid discovered USD material file (no material prims) -> `ValueError`
 - missing `manifold3d` for merge -> `ImportError`
 - failed boolean union result -> `RuntimeError`
 
