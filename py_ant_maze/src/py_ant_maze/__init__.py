@@ -2,6 +2,12 @@
 
 from .core import ElementSet, MazeElement, CellElement, WallElement
 from .maze import Maze, MazeDraft
+from .convert_img2config import (
+    GridEstimate,
+    MazeReconstruction,
+    image_to_yaml_file,
+    infer_maze_yaml_from_image,
+)
 from .mazes import (
     OccupancyGridConfig,
     OccupancyGridLayout,
@@ -42,6 +48,8 @@ __all__ = [
     "MazeElement",
     "CellElement",
     "WallElement",
+    "GridEstimate",
+    "MazeReconstruction",
     "OccupancyGridConfig",
     "OccupancyGridLayout",
     "FrozenOccupancyGridConfig",
@@ -72,5 +80,7 @@ __all__ = [
     "OccupancyGrid3DHandler",
     "EdgeGrid3DHandler",
     "RadialArm3DHandler",
+    "infer_maze_yaml_from_image",
+    "image_to_yaml_file",
 ]
 __version__ = "0.1.1"

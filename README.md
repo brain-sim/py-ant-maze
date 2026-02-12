@@ -6,7 +6,7 @@ Monorepo for maze authoring, serialization, and USD generation.
 
 | Package | Purpose |
 | --- | --- |
-| [`py_ant_maze`](py_ant_maze) | Maze model + YAML parsing/validation/editing APIs |
+| [`py_ant_maze`](py_ant_maze) | Maze model + YAML parsing/validation/editing APIs + 2D image-to-YAML inversion |
 | [`maze_generator`](maze_generator) | Convert maze YAML to USD with materials/textures |
 | [`maze_editor`](maze_editor) | Browser editor (React + Pyodide) for interactive maze editing |
 
@@ -24,6 +24,7 @@ Run the USD generator CLI:
 ```bash
 maze-generator path/to/maze.yaml -o path/to/output.usda
 maze-generator path/to/maze.yaml --merge
+maze-generator path/to/maze-layout.png --from-image -o path/to/inferred.yaml
 ```
 
 Run the web editor:
