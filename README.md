@@ -6,7 +6,7 @@ Monorepo for maze authoring, serialization, and USD generation.
 
 | Package | Purpose |
 | --- | --- |
-| [`py_ant_maze`](py_ant_maze) | Maze model + YAML parsing/validation/editing APIs + 2D image-to-YAML inversion |
+| [`py_ant_maze`](py_ant_maze) | Maze model + YAML parsing/validation/editing APIs + 2D image-to-YAML inversion + 2D config-to-image rendering |
 | [`maze_generator`](maze_generator) | Convert maze YAML to USD with materials/textures |
 | [`maze_editor`](maze_editor) | Browser editor (React + Pyodide) for interactive maze editing |
 
@@ -25,6 +25,9 @@ Run the USD generator CLI:
 maze-generator path/to/maze.yaml -o path/to/output.usda
 maze-generator path/to/maze.yaml --merge
 maze-generator path/to/maze-layout.png --from-image -o path/to/inferred.yaml
+
+# render image directly from YAML/config (2D occupancy/edge)
+python -c "from py_ant_maze import config_file_to_image; config_file_to_image('path/to/maze.yaml', 'path/to/maze-layout.png')"
 ```
 
 Run the web editor:
@@ -50,6 +53,7 @@ npm run dev
 
 - `maze_generator` uses strict failure behavior (no silent fallback for invalid inputs or missing required dependencies).
 - `--merge` uses boolean union and writes a single merged wall mesh with per-element material subsets.
+- `py_ant_maze.convert_config2img` intentionally mirrors maze editor rendering logic in Python. It is a copied implementation; `maze_editor` code remains separate.
 
 ## License
 

@@ -8,6 +8,18 @@ from .convert_img2config import (
     image_to_yaml_file,
     infer_maze_yaml_from_image,
 )
+from .convert_config2img import (
+    Layer,
+    RGB,
+    RenderPalette,
+    RenderSizing,
+    WebColorResolver,
+    MazeConfigImageRenderer,
+    maze_to_image,
+    maze_to_image_file,
+    config_text_to_image,
+    config_file_to_image,
+)
 from .mazes import (
     OccupancyGridConfig,
     OccupancyGridLayout,
@@ -48,6 +60,12 @@ __all__ = [
     "MazeElement",
     "CellElement",
     "WallElement",
+    "Layer",
+    "RGB",
+    "RenderPalette",
+    "RenderSizing",
+    "WebColorResolver",
+    "MazeConfigImageRenderer",
     "GridEstimate",
     "MazeReconstruction",
     "OccupancyGridConfig",
@@ -82,5 +100,9 @@ __all__ = [
     "RadialArm3DHandler",
     "infer_maze_yaml_from_image",
     "image_to_yaml_file",
+    "maze_to_image",
+    "maze_to_image_file",
+    "config_text_to_image",
+    "config_file_to_image",
 ]
 __version__ = "0.1.1"
