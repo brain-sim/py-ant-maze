@@ -143,7 +143,7 @@ export function useMaze(): UseMazeResult {
     // Parse YAML and update maze data
     const parse = useCallback(async (yamlText?: string) => {
         try {
-            const textToParse = yamlText ?? input;
+            const textToParse = typeof yamlText === 'string' ? yamlText : input;
             const { data } = await parseMaze(textToParse);
             setMazeData(data);
             syncSelectionState(data);
