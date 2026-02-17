@@ -15,6 +15,7 @@ from .maze_materials.discovery import (
     get_default_assets_path,
 )
 from .maze_materials.source import MaterialSource, UsdMaterialRef
+from .maze_obj.writer import write_obj_bundle
 from .maze_usd.writer import write_usd
 
 __all__ = [
@@ -23,6 +24,7 @@ __all__ = [
     "discover_all_default_materials",
     "discover_default_materials",
     "get_default_assets_path",
+    "maze_to_obj",
     "maze_to_usd",
 ]
 
@@ -31,26 +33,40 @@ def maze_to_usd(
     maze_or_path: Maze | str | Path,
     output_path: str,
     *,
-    merge: bool = False,
     material_map: MaterialMap | None = None,
     material_source: MaterialSource | None = None,
 ) -> str:
     maze = _coerce_maze(maze_or_path)
-    if material_source is not None and not isinstance(material_source, MaterialSource):
-        raise TypeError("material_source must be MaterialSource")
-    resolved_material_source = material_source
-    if resolved_material_source is None:
-        resolved_material_source = discover_default_materials(allow_empty=True)
+    resolved_material_source = _resolve_material_source(material_source)
 
     geometry = extract_geometry(maze)
     write_usd(
         geometry,
         output_path,
-        merge=merge,
         material_map=material_map,
         material_source=resolved_material_source,
     )
     return str(Path(output_path).resolve())
+
+
+def maze_to_obj(
+    maze_or_path: Maze | str | Path,
+    output_dir: str,
+    *,
+    material_map: MaterialMap | None = None,
+    material_source: MaterialSource | None = None,
+) -> str:
+    maze = _coerce_maze(maze_or_path)
+    resolved_material_source = _resolve_material_source(material_source)
+
+    geometry = extract_geometry(maze)
+    write_obj_bundle(
+        geometry,
+        output_dir,
+        material_map=material_map,
+        material_source=resolved_material_source,
+    )
+    return str(Path(output_dir).resolve())
 
 
 def _coerce_maze(maze_or_path: Any):
@@ -62,3 +78,11 @@ def _coerce_maze(maze_or_path: Any):
             raise FileNotFoundError(f"Maze file not found: {maze_path}")
         return Maze.from_file(str(maze_path))
     raise TypeError("maze_or_path must be a py_ant_maze.Maze instance or a path")
+
+
+def _resolve_material_source(material_source: MaterialSource | None) -> MaterialSource:
+    if material_source is not None and not isinstance(material_source, MaterialSource):
+        raise TypeError("material_source must be MaterialSource")
+    if material_source is None:
+        return discover_default_materials(allow_empty=True)
+    return material_source

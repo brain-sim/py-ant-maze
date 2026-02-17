@@ -23,7 +23,7 @@ Run the USD generator CLI:
 
 ```bash
 maze-generator path/to/maze.yaml -o path/to/output.usda
-maze-generator path/to/maze.yaml --merge
+maze-generator path/to/maze.yaml --format obj -o path/to/output_bundle
 maze-generator path/to/maze-layout.png --from-image -o path/to/inferred.yaml
 
 # render image directly from YAML/config (2D occupancy/edge)
@@ -52,7 +52,8 @@ npm run dev
 ## Notes
 
 - `maze_generator` uses strict failure behavior (no silent fallback for invalid inputs or missing required dependencies).
-- `--merge` uses boolean union and writes a single merged wall mesh with per-element material subsets.
+- USD export always writes merged visual walls plus separate box-compound colliders (`/Maze/Colliders`).
+- OBJ export writes a bundle directory containing `visual.obj`, `collider.obj`, and copied `textures/`.
 - `py_ant_maze.convert_config2img` intentionally mirrors maze editor rendering logic in Python. It is a copied implementation; `maze_editor` code remains separate.
 
 ## License

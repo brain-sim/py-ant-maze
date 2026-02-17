@@ -10,14 +10,16 @@ from ..maze_geometry.models import MazeGeometry
 from ..maze_materials.color import MaterialMap
 from ..maze_materials.source import MaterialSource
 from .material_library import MaterialLibrary
-from .wall_writers import IndividualWallWriter, MergedWallWriter, WallWriter
+from .wall_writers import (
+    CompoundBoxColliderWriter,
+    MergedWallWriter,
+)
 
 
 def write_usd(
     geometry: MazeGeometry,
     output_path: str,
     *,
-    merge: bool = False,
     material_map: MaterialMap | None = None,
     material_source: MaterialSource | None = None,
 ) -> None:
@@ -44,8 +46,8 @@ def write_usd(
         geometry.element_names,
     )
 
-    wall_writer: WallWriter = MergedWallWriter() if merge else IndividualWallWriter()
-    wall_writer.write(stage, geometry.walls, materials)
+    MergedWallWriter().write(stage, geometry.walls, materials)
+    CompoundBoxColliderWriter().write(stage, geometry.walls)
 
     stage.GetRootLayer().Save()
     if not output.is_file():

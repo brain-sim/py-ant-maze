@@ -1,6 +1,6 @@
 # maze_generator
 
-Generate USD mazes from `py_ant_maze` YAML files.
+Generate USD/OBJ maze assets from `py_ant_maze` YAML files.
 
 ## Install
 
@@ -14,20 +14,35 @@ Required runtime dependencies:
 - `trimesh>=4.0.0`
 - `manifold3d>=2.5.0`
 
+## Export Behavior
+
+USD output is fixed to:
+- one merged visual mesh at `/Maze/Walls/merged_walls` with per-element material subsets
+- one separate collider branch at `/Maze/Colliders/*` with box-compound colliders (`UsdPhysics.CollisionAPI`)
+
+OBJ output is fixed to a bundle directory containing:
+- `visual.obj` + `visual.mtl` (merged visual meshes/materials)
+- `collider.obj` + `collider.mtl` (box-compound colliders)
+- `textures/` (copied texture assets for visual materials)
+
 ## CLI
 
 ```bash
 maze-generator input.yaml -o output.usda
-maze-generator input.yaml --merge
-python -m maze_generator input.yaml -o output.usda
+maze-generator input.yaml --format obj -o output_bundle
+python -m maze_generator input.yaml --format obj
 ```
 
-- `-o, --output`: output USD path (default: `<input>.usda`)
-- `--merge`: boolean-union wall boxes and emit one mesh at `/Maze/Walls/merged_walls`
+- `-o, --output`: output path
+  - USD: output USD file path
+  - OBJ: output bundle directory path
+- `--format {usd,obj}`: output format
+  - if omitted, inferred from `--output` suffix (`.obj` => obj, `.usd/.usda/.usdc/.usdz` => usd)
+  - if still ambiguous, defaults to `usd`
 
-Default behavior:
-- auto-discovers textures from `maze_generator/default_assets/textures` and USD materials from `maze_generator/default_assets/materials` (`allow_empty=True`)
-- raises explicit exceptions on invalid input or missing required dependencies
+Default output paths:
+- USD: `<input>.usda`
+- OBJ: `<input>_obj` directory
 
 ## Python API
 
@@ -37,20 +52,22 @@ from maze_generator import (
     UsdMaterialRef,
     discover_all_default_materials,
     discover_default_materials,
+    maze_to_obj,
     maze_to_usd,
 )
 
-# Procedural materials only
+# USD output (merged visual + separate colliders)
 maze_to_usd("maze.yaml", "maze.usda")
 
-# Boolean union merge into one mesh
-maze_to_usd("maze.yaml", "maze_merged.usda", merge=True)
+# OBJ bundle output (visual.obj + collider.obj + textures/)
+maze_to_obj("maze.yaml", "maze_obj_bundle")
 
 # Texture mapping by element name
 source = MaterialSource(textures={"wall_1": "/abs/path/wall_1.jpg"})
+maze_to_obj("maze.yaml", "maze_obj_bundle_textured", material_source=source)
 maze_to_usd("maze.yaml", "maze_textured.usda", material_source=source)
 
-# External USD material mapping by element name
+# External USD material mapping by element name (USD output)
 source = MaterialSource(
     usd_materials={
         "wall_2": UsdMaterialRef(
@@ -61,34 +78,23 @@ source = MaterialSource(
 )
 maze_to_usd("maze.yaml", "maze_external.usda", material_source=source)
 
-# Discover packaged textures
+# Discover packaged textures and materials
 source = discover_default_materials()
 source = discover_all_default_materials()
-
-# Discover with custom USD file patterns
-source = discover_default_materials(usd_patterns=["*.usda"])
 ```
 
-## Material Resolution Order
+## Material Resolution
 
-For each element name:
+For each wall element name:
+
+USD output:
 1. `MaterialSource.usd_materials[element_name]`
 2. `MaterialSource.textures[element_name]`
 3. procedural preview material (`material_map` override or generated color)
 
-When `merge=True`, one mesh is emitted with per-element `UsdGeom.Subset` face groups for material binding.
-
-## USD Material Discovery
-
-- Discovery scans files recursively under `default_assets/materials` with patterns `*.usd`, `*.usda`, `*.usdc`, `*.usdz`.
-- Single-material USD file:
-  - if nested under `default_assets/materials/<element>/...`, maps to `<element>`
-  - otherwise maps by file stem
-  - Example: `default_assets/materials/wall_1/wall_1.usd` maps to element `wall_1`.
-- Multi-material USD file: each `UsdShade.Material` prim maps by prim name.
-  - Example: `/Materials/wall_2` maps to element `wall_2`.
-- If both texture and USD material are discovered for the same element, the USD material is used.
-- USD files without any `UsdShade.Material` prims raise `ValueError`.
+OBJ visual output:
+1. `MaterialSource.textures[element_name]` -> `map_Kd` in `visual.mtl`
+2. fallback diffuse color (`Kd`) from `material_map`/generated color
 
 ## Failure Behavior
 
@@ -97,7 +103,7 @@ The package is fail-fast by design:
 - invalid maze spec/layout -> `ValueError` / `TypeError`
 - missing texture/USD material path -> `FileNotFoundError`
 - invalid discovered USD material file (no material prims) -> `ValueError`
-- missing `manifold3d` for merge -> `ImportError`
+- missing `manifold3d` for merged wall generation -> `ImportError`
 - failed boolean union result -> `RuntimeError`
 
 ## Package Layout
@@ -105,8 +111,7 @@ The package is fail-fast by design:
 - `maze_generator/__init__.py`: public API
 - `maze_generator/__main__.py`: CLI entrypoint
 - `maze_generator/maze_geometry/`: extraction and wall box models
-- `maze_generator/maze_materials/`: material models, discovery, shader node helpers
+- `maze_generator/maze_materials/`: material models and discovery
 - `maze_generator/maze_boolean/`: boolean union integration
 - `maze_generator/maze_usd/`: USD stage/material/wall writing pipeline
-
-Top-level compatibility wrapper modules are intentionally removed.
+- `maze_generator/maze_obj/`: OBJ bundle writing pipeline
