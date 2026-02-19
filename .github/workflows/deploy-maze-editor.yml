@@ -29,6 +29,16 @@ jobs:
           cache: 'npm'
           cache-dependency-path: maze_editor/package-lock.json
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build Python wheel
+        working-directory: py_ant_maze
+        run: |
+          pip install build
+          python -m build --wheel
+
       - name: Install dependencies
         working-directory: maze_editor
         run: npm ci
