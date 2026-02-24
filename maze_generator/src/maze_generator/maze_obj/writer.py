@@ -199,7 +199,7 @@ def _write_mtl(
 
         texture_path: str | None = None
         if material_source is not None:
-            texture_path = material_source.get_texture(chunk.element_name)
+            texture_path = material_source.resolve_texture_for_obj(chunk.element_name)
 
         lines.append(f"newmtl {chunk.material_name}")
         lines.append("Ka 0.000000 0.000000 0.000000")

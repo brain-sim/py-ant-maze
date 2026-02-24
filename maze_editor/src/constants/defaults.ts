@@ -103,55 +103,82 @@ export const IMAGE_EXPORT_CONFIG = {
 export const DEFAULT_RADIAL_ARM_YAML = `maze_type: radial_arm
 config:
   cell_elements:
-    - name: open
-      token: "."
+  - name: open
+    token: '.'
+    value: 0
   wall_elements:
-    - name: wall
-      token: "#"
-    - name: open
-      token: "-"
+  - name: wall
+    token: '#'
+    value: 1
+  - name: open
+    token: '-'
+    value: 0
 layout:
   center_hub:
     shape: circular
-    angle_degrees: 360
+    angle_degrees: 180.0
     radius: 2.0
   arms:
-    - layout:
-        cells: |
-          . . . .
-        walls:
-          vertical: |
-            # # # # #
-          horizontal: |
-            # # # #
-            # # # #
-    - layout:
-        cells: |
-          . . . .
-        walls:
-          vertical: |
-            # # # # #
-          horizontal: |
-            # # # #
-            # # # #
-    - layout:
-        cells: |
-          . . . .
-        walls:
-          vertical: |
-            # # # # #
-          horizontal: |
-            # # # #
-            # # # #
-    - layout:
-        cells: |
-          . . . .
-        walls:
-          vertical: |
-            # # # # #
-          horizontal: |
-            # # # #
-            # # # #
+  - layout:
+      cells: |
+        ___ 0 1 2 3
+        0 | . . . .
+      walls:
+        vertical: |
+          ___ 0 1 2 3 4
+          0 | - - - - #
+        horizontal: |
+          ___ 0 1 2 3
+          0 | # # # #
+          1 | # # # #
+  - layout:
+      cells: |
+        ___ 0 1 2 3
+        0 | . . . .
+      walls:
+        vertical: |
+          ___ 0 1 2 3 4
+          0 | - - - - #
+        horizontal: |
+          ___ 0 1 2 3
+          0 | # # # #
+          1 | # # # #
+  - layout:
+      cells: |
+        ___ 0 1 2 3
+        0 | . . . .
+      walls:
+        vertical: |
+          ___ 0 1 2 3 4
+          0 | - - - - #
+        horizontal: |
+          ___ 0 1 2 3
+          0 | # # # #
+          1 | # # # #
+  - layout:
+      cells: |
+        ___ 0 1 2 3
+        0 | . . . .
+      walls:
+        vertical: |
+          ___ 0 1 2 3 4
+          0 | - - - - #
+        horizontal: |
+          ___ 0 1 2 3
+          0 | # # # #
+          1 | # # # #
+  - layout:
+      cells: |
+        ___ 0 1 2 3
+        0 | . . . .
+      walls:
+        vertical: |
+          ___ 0 1 2 3 4
+          0 | - - - - #
+        horizontal: |
+          ___ 0 1 2 3
+          0 | # # # #
+          1 | # # # #
 `;
 
 /** Default YAML for a new radial arm maze with polygon hub */

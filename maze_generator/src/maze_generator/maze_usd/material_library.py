@@ -26,7 +26,7 @@ class MaterialLibrary:
         for element_name in element_names:
             mat_path = f"/Maze/Materials/{sanitize_prim_name(element_name)}"
             if self.material_source is not None:
-                usd_material = self.material_source.get_usd_material(element_name)
+                usd_material, texture_path = self.material_source.resolve_for_usd(element_name)
                 if usd_material is not None:
                     materials[element_name] = reference_usd_material(
                         stage,
@@ -36,7 +36,6 @@ class MaterialLibrary:
                     )
                     continue
 
-                texture_path = self.material_source.get_texture(element_name)
                 if texture_path is not None:
                     materials[element_name] = create_texture_material(
                         stage,

@@ -71,15 +71,13 @@ class EdgeGridExtractor:
         wall_height = _validate_positive_scalar("wall_height", maze.config.wall_height)
         wall_thickness = _validate_positive_scalar("wall_thickness", maze.config.wall_thickness)
         wall_map = _wall_value_map(maze)
-        open_values = {
-            element.value for element in maze.config.wall_elements.elements() if element.name.lower() == "open"
-        }
 
         walls: list[WallBox] = []
         for row in range(rows):
             for col in range(cols + 1):
                 value = v_walls[row][col]
-                if value in open_values:
+                # Match edge-grid rendering semantics: only strictly positive wall values are solid.
+                if value <= 0:
                     continue
                 element_name = _resolve_wall_name(wall_map, value, "layout.vertical_walls", row, col)
                 walls.append(
@@ -93,7 +91,7 @@ class EdgeGridExtractor:
         for row in range(rows + 1):
             for col in range(cols):
                 value = h_walls[row][col]
-                if value in open_values:
+                if value <= 0:
                     continue
                 element_name = _resolve_wall_name(wall_map, value, "layout.horizontal_walls", row, col)
                 walls.append(

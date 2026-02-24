@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Literal
 
 Vec3 = tuple[float, float, float]
+CoordinateFrame = Literal["config", "simulation"]
+_VALID_COORDINATE_FRAMES = ("config", "simulation")
 
 
 def _validate_vec3(value: Vec3, *, field_name: str) -> None:
@@ -40,14 +42,49 @@ class WallBox:
 class MazeGeometry:
     walls: tuple[WallBox, ...]
     bounds: Vec3
+    frame: CoordinateFrame = "config"
 
     def __post_init__(self) -> None:
         _validate_positive_vec3(self.bounds, field_name="bounds")
+        if self.frame not in _VALID_COORDINATE_FRAMES:
+            raise ValueError(
+                f"frame must be one of {_VALID_COORDINATE_FRAMES}, got {self.frame!r}"
+            )
 
     @classmethod
-    def from_walls(cls, walls: Iterable[WallBox], bounds: Vec3) -> "MazeGeometry":
-        return cls(tuple(walls), bounds)
+    def from_walls(
+        cls,
+        walls: Iterable[WallBox],
+        bounds: Vec3,
+        *,
+        frame: CoordinateFrame = "config",
+    ) -> "MazeGeometry":
+        return cls(tuple(walls), bounds, frame=frame)
 
     @property
     def element_names(self) -> tuple[str, ...]:
         return tuple(sorted({wall.element_name for wall in self.walls}))
+
+    def to_frame(self, target_frame: CoordinateFrame) -> "MazeGeometry":
+        if target_frame not in _VALID_COORDINATE_FRAMES:
+            raise ValueError(
+                f"target_frame must be one of {_VALID_COORDINATE_FRAMES}, got {target_frame!r}"
+            )
+        if target_frame == self.frame:
+            return self
+
+        transformed_walls = tuple(
+            WallBox(
+                center=_flip_y_around_bounds(wall.center, bounds=self.bounds),
+                size=wall.size,
+                element_name=wall.element_name,
+            )
+            for wall in self.walls
+        )
+        return MazeGeometry(transformed_walls, self.bounds, frame=target_frame)
+
+
+def _flip_y_around_bounds(center: Vec3, *, bounds: Vec3) -> Vec3:
+    _, height, _ = bounds
+    x, y, z = center
+    return (x, height - y, z)

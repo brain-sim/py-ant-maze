@@ -1,6 +1,6 @@
 """Geometry package."""
 
 from .extractor import extract_geometry
-from .models import MazeGeometry, Vec3, WallBox
+from .models import CoordinateFrame, MazeGeometry, Vec3, WallBox
 
-__all__ = ["Vec3", "WallBox", "MazeGeometry", "extract_geometry"]
+__all__ = ["Vec3", "WallBox", "CoordinateFrame", "MazeGeometry", "extract_geometry"]

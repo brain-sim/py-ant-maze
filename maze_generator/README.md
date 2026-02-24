@@ -30,6 +30,7 @@ OBJ output is fixed to a bundle directory containing:
 ```bash
 maze-generator input.yaml -o output.usda
 maze-generator input.yaml --format obj -o output_bundle
+maze-generator input.yaml --frame config -o output_config_frame.usda
 python -m maze_generator input.yaml --format obj
 ```
 
@@ -38,7 +39,12 @@ python -m maze_generator input.yaml --format obj
   - OBJ: output bundle directory path
 - `--format {usd,obj}`: output format
   - if omitted, inferred from `--output` suffix (`.obj` => obj, `.usd/.usda/.usdc/.usdz` => usd)
+  - extensionless names ending with `_obj` or `_obj_bundle` are treated as obj output
   - if still ambiguous, defaults to `usd`
+- when output format resolves to usd and `--output` has no USD suffix, `.usda` is appended automatically
+- `--frame {simulation,config}`: output coordinate frame
+  - `simulation` (default): flips map Y from config-image indexing for sim-friendly orientation
+  - `config`: preserves raw layout indexing as-authored in YAML
 
 Default output paths:
 - USD: `<input>.usda`
@@ -48,6 +54,7 @@ Default output paths:
 
 ```python
 from maze_generator import (
+    ExportOptions,
     MaterialSource,
     UsdMaterialRef,
     discover_all_default_materials,
@@ -61,6 +68,13 @@ maze_to_usd("maze.yaml", "maze.usda")
 
 # OBJ bundle output (visual.obj + collider.obj + textures/)
 maze_to_obj("maze.yaml", "maze_obj_bundle")
+
+# Export in config frame (no X/Y flip)
+maze_to_usd(
+    "maze.yaml",
+    "maze_config_frame.usda",
+    export_options=ExportOptions(target_frame="config"),
+)
 
 # Texture mapping by element name
 source = MaterialSource(textures={"wall_1": "/abs/path/wall_1.jpg"})
@@ -86,6 +100,8 @@ source = discover_all_default_materials()
 ## Material Resolution
 
 For each wall element name:
+
+If the same element name exists in both `usd_materials` and `textures`, both are allowed.
 
 USD output:
 1. `MaterialSource.usd_materials[element_name]`

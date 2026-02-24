@@ -51,6 +51,26 @@ class MaterialSource:
             return value
         return UsdMaterialRef.from_mapping(value, element_name=element_name)
 
+    def resolve_for_usd(self, element_name: str) -> tuple[UsdMaterialRef | None, str | None]:
+        """Resolve material candidates for USD export.
+
+        Priority order:
+        1) USD material
+        2) texture
+        """
+        usd_material = self.get_usd_material(element_name)
+        if usd_material is not None:
+            return usd_material, None
+        return None, self.get_texture(element_name)
+
+    def resolve_texture_for_obj(self, element_name: str) -> str | None:
+        """Resolve texture candidate for OBJ export.
+
+        Priority order:
+        1) texture
+        """
+        return self.get_texture(element_name)
+
     def has_custom_material(self, element_name: str) -> bool:
         return element_name in self.textures or element_name in self.usd_materials
 
