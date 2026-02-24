@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    if: github.repository == 'brain-sim/py-ant-maze'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
