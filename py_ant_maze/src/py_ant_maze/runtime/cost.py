@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Iterable, Mapping
 
 import numpy as np
@@ -10,6 +9,7 @@ from ..maze import Maze
 from .extractors import MazeCellsExtractorRegistry
 from .frames import FRAME_CONFIG, FRAME_SIMULATION, normalize_frame
 from .model import MazeSemantics
+from .runtime import MazeRuntime
 from .semantics import MazeSemanticsBuilder
 
 
@@ -66,21 +66,19 @@ class CostSemanticTemplate:
 class MazeCostCalculator:
     def __init__(
         self,
-        maze_type: str,
-        cell_size: float,
+        runtime: MazeRuntime,
         distance_lattice: np.ndarray,
         max_cost: float,
         distance_decay: float,
     ):
-        if cell_size <= 0.0:
-            raise ValueError(f"cell_size must be positive; got {cell_size}")
         if distance_decay <= 0.0:
             raise ValueError(f"distance_decay must be positive; got {distance_decay}")
         if max_cost < 0.0:
             raise ValueError(f"max_cost must be >= 0; got {max_cost}")
 
-        self.maze_type = maze_type
-        self.cell_size = float(cell_size)
+        self.runtime = runtime
+        self.maze_type = runtime.maze_type
+        self.cell_size = runtime.cell_size
         self.max_cost = float(max_cost)
         self.distance_decay = float(distance_decay)
 
@@ -106,24 +104,31 @@ class MazeCostCalculator:
         self._cost_cells.setflags(write=False)
 
     @classmethod
-    def from_maze_file(
+    def from_runtime(
         cls,
-        maze_file: str | Path,
+        runtime: MazeRuntime,
         semantic_template: CostSemanticTemplate,
         *,
         max_cost: float = 1.0,
         distance_decay: float = 0.5,
-        cells_registry: MazeCellsExtractorRegistry | None = None,
-        semantics_builder: MazeSemanticsBuilder | None = None,
     ) -> "MazeCostCalculator":
-        maze = Maze.from_file(str(maze_file))
-        return cls.from_maze(
-            maze,
-            semantic_template,
+        resolved = semantic_template.resolve(runtime.semantics)
+
+        source_mask = _build_source_mask(
+            maze_type=runtime.maze_type,
+            layout=runtime.maze.layout,
+            cells=np.asarray(runtime.cells.values, dtype=np.int64),
+            resolved=resolved,
+        )
+        if not np.any(source_mask):
+            raise ValueError("Resolved cost semantics produced no source elements.")
+
+        distance_lattice = _distance_lattice(source_mask, meters_per_step=0.5 * runtime.cell_size)
+        return cls(
+            runtime=runtime,
+            distance_lattice=distance_lattice,
             max_cost=max_cost,
             distance_decay=distance_decay,
-            cells_registry=cells_registry,
-            semantics_builder=semantics_builder,
         )
 
     @classmethod
@@ -137,31 +142,14 @@ class MazeCostCalculator:
         cells_registry: MazeCellsExtractorRegistry | None = None,
         semantics_builder: MazeSemanticsBuilder | None = None,
     ) -> "MazeCostCalculator":
-        cells_registry = cells_registry or MazeCellsExtractorRegistry()
-        semantics_builder = semantics_builder or MazeSemanticsBuilder()
-
-        cells = cells_registry.extract_cells(maze.maze_type, maze.layout)
-        semantics = semantics_builder.build(maze.config)
-        resolved = semantic_template.resolve(semantics)
-
-        cell_size = float(maze.config.cell_size)
-        if cell_size <= 0.0:
-            raise ValueError(f"config.cell_size must be positive; got {cell_size}")
-
-        source_mask = _build_source_mask(
-            maze_type=maze.maze_type,
-            layout=maze.layout,
-            cells=np.asarray(cells.values, dtype=np.int64),
-            resolved=resolved,
+        runtime = MazeRuntime.from_maze(
+            maze,
+            cells_registry=cells_registry,
+            semantics_builder=semantics_builder,
         )
-        if not np.any(source_mask):
-            raise ValueError("Resolved cost semantics produced no source elements.")
-
-        distance_lattice = _distance_lattice(source_mask, meters_per_step=0.5 * cell_size)
-        return cls(
-            maze_type=maze.maze_type,
-            cell_size=cell_size,
-            distance_lattice=distance_lattice,
+        return cls.from_runtime(
+            runtime=runtime,
+            semantic_template=semantic_template,
             max_cost=max_cost,
             distance_decay=distance_decay,
         )

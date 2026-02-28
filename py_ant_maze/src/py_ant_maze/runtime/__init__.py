@@ -1,18 +1,17 @@
 from .cost import CostSemanticTemplate, MazeCostCalculator, ResolvedCostSemantics
 from .frames import FRAME_CHOICES, FRAME_CONFIG, FRAME_SIMULATION, MazeFrameTransformer, normalize_frame
-from .loader import MazeRuntimeLoader
-from .model import LoadedMazeLayout, MazeCells, MazeSemantics
+from .model import MazeCells, MazeSemantics
+from .runtime import MazeRuntime
 
 __all__ = [
     "CostSemanticTemplate",
     "FRAME_CHOICES",
     "FRAME_CONFIG",
     "FRAME_SIMULATION",
-    "LoadedMazeLayout",
     "MazeCells",
     "MazeCostCalculator",
     "MazeFrameTransformer",
-    "MazeRuntimeLoader",
+    "MazeRuntime",
     "MazeSemantics",
     "ResolvedCostSemantics",
     "normalize_frame",

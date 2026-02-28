@@ -30,11 +30,3 @@ class MazeSemantics:
         for name in names:
             values.update(by_name.get(str(name).strip().lower(), ()))
         return frozenset(values)
-
-
-@dataclass(frozen=True)
-class LoadedMazeLayout:
-    maze_type: str
-    cells: MazeCells
-    semantics: MazeSemantics
-    cell_size: float
