@@ -160,6 +160,16 @@ class FrozenElementSet:
         self._by_token = MappingProxyType({el.token: el for el in elements_tuple})
         self._by_value = MappingProxyType({el.value: el for el in elements_tuple})
 
+    def __getstate__(self) -> dict[str, FrozenElementList]:
+        return {"_elements": self._elements}
+
+    def __setstate__(self, state: dict[str, FrozenElementList]) -> None:
+        elements_tuple = tuple(state["_elements"])
+        self._elements = elements_tuple
+        self._by_name = MappingProxyType({el.name: el for el in elements_tuple})
+        self._by_token = MappingProxyType({el.token: el for el in elements_tuple})
+        self._by_value = MappingProxyType({el.value: el for el in elements_tuple})
+
     def element(self, name: str) -> MazeElement:
         try:
             return self._by_name[name]

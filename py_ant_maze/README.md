@@ -85,38 +85,6 @@ Supported frames:
 - `config`: raw YAML/image indexing
 - `simulation`: Y-only flip (`(x, y) -> (x, H - y)`)
 
-### Precomputed Proximity Cost
-
-```python
-from py_ant_maze.runtime import CostSemanticTemplate, MazeCostCalculator
-
-# Example: use most wall semantics, but exclude empty edges.
-template = CostSemanticTemplate(
-    include_all_walls=True,
-    wall_exclude_names=("empty",),
-)
-
-calc = MazeCostCalculator.from_runtime(
-    runtime,
-    semantic_template=template,
-    max_cost=1.0,
-    distance_decay=0.75,
-)
-
-cost = calc.cost_at_xy([x, y], frame="simulation")
-dist = calc.distance_at_xy([x, y], frame="simulation")
-```
-
-Cost function:
-- `cost = max_cost * exp(-distance / distance_decay)`
-- closer to selected sources => higher cost
-
-Precomputed arrays:
-- `distance_lattice`, `cost_lattice` (half-cell lattice)
-- `distance_cells`, `cost_cells` (cell-center view)
-
-`CostSemanticTemplate` defaults select nothing. If no sources are resolved, calculator creation raises `ValueError`.
-
 ## Image Inversion Scope
 
 - maze types: `occupancy_grid`, `edge_grid`
@@ -178,7 +146,7 @@ For 3D types, `level` is required. For edge/radial wall editing, `wall_type` mus
 
 - `src/py_ant_maze/maze.py`: `Maze` and `MazeDraft`
 - `src/py_ant_maze/runtime/runtime.py`: `MazeRuntime`
-- `src/py_ant_maze/runtime/cost.py`: precomputed cost field calculator
+- `src/py_ant_maze/runtime/spatial.py`: spatial wall/cell query runtime
 - `src/py_ant_maze/runtime/frames.py`: frame helpers
 - `src/py_ant_maze/runtime/extractors.py`: maze-type cell extraction strategies
 - `src/py_ant_maze/runtime/semantics.py`: generic semantics index builder

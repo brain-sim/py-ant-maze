@@ -37,7 +37,8 @@ def write_usd(
 
     UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.z)
     UsdGeom.SetStageMetersPerUnit(stage, 1.0)
-    UsdGeom.Xform.Define(stage, "/Maze")
+    maze_root = UsdGeom.Xform.Define(stage, "/Maze")
+    stage.SetDefaultPrim(maze_root.GetPrim())
     UsdGeom.Xform.Define(stage, "/Maze/Walls")
     UsdGeom.Xform.Define(stage, "/Maze/Materials")
 

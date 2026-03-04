@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Iterable, Mapping, Sequence
 
 IntGrid = Sequence[Sequence[int]]
@@ -17,6 +17,8 @@ class MazeCells:
 class MazeSemantics:
     cell_values_by_name: dict[str, frozenset[int]]
     wall_values_by_name: dict[str, frozenset[int]]
+    cell_values_by_token: dict[str, frozenset[int]] = field(default_factory=dict)
+    wall_values_by_token: dict[str, frozenset[int]] = field(default_factory=dict)
 
     def values_for_cell_names(self, names: Iterable[str]) -> frozenset[int]:
         return self._values_for_names(self.cell_values_by_name, names)
