@@ -30,7 +30,10 @@ maze-generator path/to/maze-layout.png --from-image -o path/to/inferred.yaml
 python -c "from py_ant_maze import config_file_to_image; config_file_to_image('path/to/maze.yaml', 'path/to/maze-layout.png')"
 ```
 
-Run the web editor:
+Use the web editor:
+
+- Deployed app: open https://maze.yihao.one
+- Local development:
 
 ```bash
 cd py_ant_maze
@@ -40,6 +43,24 @@ cd ../maze_editor
 npm install
 npm run dev
 ```
+
+Then open the Vite URL shown in the terminal (usually `http://localhost:5173`).
+
+## Maze Editor Demos
+
+| Demo | Preview |
+| --- | --- |
+| Maze families and templates | ![Maze families and templates](maze_editor/media/maze_types.gif) |
+| 2D and 3D editing | ![2D and 3D editing](maze_editor/media/2d_3d_mazes.gif) |
+| Add start/end points | ![Add start/end points](maze_editor/media/exp_add_start_end.gif) |
+| Occupancy cell size controls | ![Occupancy cell size controls](maze_editor/media/occupancy_cell_size.gif) |
+| Paint occupancy cells | ![Paint occupancy cells](maze_editor/media/paint_cells.gif) |
+| Edge-grid editing | ![Edge-grid editing](maze_editor/media/edge_grid.gif) |
+| Add elements and connectors | ![Add elements and connectors](maze_editor/media/add_elements.gif) |
+| Radial-arm editing | ![Radial-arm editing](maze_editor/media/radial_arm.gif) |
+| Radial-arm polygon editing | ![Radial-arm polygon editing](maze_editor/media/radial_arm_polygon.gif) |
+| Save YAML config | ![Save YAML config](maze_editor/media/save_config.gif) |
+| Save PNG image | ![Save PNG image](maze_editor/media/save_image.gif) |
 
 ## Maze Families
 
