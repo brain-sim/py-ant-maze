@@ -1,29 +1,59 @@
 # maze_generator
 
-Generate USD/OBJ maze assets from `py_ant_maze` YAML files.
+Geometry export package for `py_ant_maze` mazes.
+
+Converts maze layouts into:
+
+- USD scene with merged visual meshes + compound colliders.
+- OBJ bundle with visual/collider meshes + copied textures.
+
+## Current Scope
+
+Supported input maze types:
+
+- `occupancy_grid`
+- `edge_grid`
+
+`radial_arm` and `*_3d` parsing exists in `py_ant_maze`, but geometry export in this package is currently implemented for the two 2D grid families above.
 
 ## Install
 
 ```bash
+cd maze_generator
 pip install -e .
 ```
 
-Required runtime dependencies:
+Runtime dependencies:
+
 - `py-ant-maze`
 - `usd-core>=24.0`
 - `trimesh>=4.0.0`
 - `manifold3d>=2.5.0`
 
-## Export Behavior
+## Export Pipeline (Code Path)
 
-USD output is fixed to:
-- one merged visual mesh at `/Maze/Walls/merged_walls` with per-element material subsets
-- one separate collider branch at `/Maze/Colliders/*` with box-compound colliders (`UsdPhysics.CollisionAPI`)
+1. Parse/load maze (`py_ant_maze.Maze` or YAML path).
+2. Extract wall boxes (`maze_geometry/extractor.py`).
+3. Apply export frame (`ExportOptions.target_frame`).
+4. Resolve materials (`maze_materials/source.py`, `discovery.py`, `color.py`).
+5. Write output:
+   - USD: `maze_usd/writer.py` + `wall_writers.py`
+   - OBJ: `maze_obj/writer.py`
 
-OBJ output is fixed to a bundle directory containing:
-- `visual.obj` + `visual.mtl` (merged visual meshes/materials)
-- `collider.obj` + `collider.mtl` (box-compound colliders)
-- `textures/` (copied texture assets for visual materials)
+## Package Structure
+
+```text
+src/maze_generator/
+├── __main__.py                  # CLI
+├── __init__.py                  # Public Python API
+├── export_options.py            # Frame conversion options
+├── maze_geometry/               # Maze -> wall boxes
+├── maze_boolean/                # Boolean union + convex segmentation
+├── maze_materials/              # Material source/discovery/color logic
+├── maze_usd/                    # USD stage, material library, wall writers
+├── maze_obj/                    # OBJ/MTL bundle writer
+└── default_assets/              # Packaged textures + USD materials
+```
 
 ## CLI
 
@@ -34,21 +64,24 @@ maze-generator input.yaml --frame config -o output_config_frame.usda
 python -m maze_generator input.yaml --format obj
 ```
 
-- `-o, --output`: output path
-  - USD: output USD file path
-  - OBJ: output bundle directory path
-- `--format {usd,obj}`: output format
-  - if omitted, inferred from `--output` suffix (`.obj` => obj, `.usd/.usda/.usdc/.usdz` => usd)
-  - extensionless names ending with `_obj` or `_obj_bundle` are treated as obj output
-  - if still ambiguous, defaults to `usd`
-- when output format resolves to usd and `--output` has no USD suffix, `.usda` is appended automatically
-- `--frame {simulation,config}`: output coordinate frame
-  - `simulation` (default): flips map Y from config-image indexing for sim-friendly orientation
-  - `config`: preserves raw layout indexing as-authored in YAML
+Arguments:
 
-Default output paths:
+- `-o, --output`:
+  - USD: file path
+  - OBJ: output directory
+- `--format {usd,obj}`:
+  - inferred from output suffix when omitted
+  - `.obj` or `_obj`/`_obj_bundle` name hint => OBJ
+  - `.usd/.usda/.usdc/.usdz` => USD
+  - fallback default => USD
+- `--frame {simulation,config}`:
+  - `simulation` (default): Y-flipped map orientation
+  - `config`: authored indexing/orientation
+
+Default output path when `--output` is omitted:
+
 - USD: `<input>.usda`
-- OBJ: `<input>_obj` directory
+- OBJ: `<input>_obj`
 
 ## Python API
 
@@ -57,31 +90,29 @@ from maze_generator import (
     ExportOptions,
     MaterialSource,
     UsdMaterialRef,
-    discover_all_default_materials,
-    discover_default_materials,
     maze_to_obj,
     maze_to_usd,
+    discover_default_materials,
 )
 
-# USD output (merged visual + separate colliders)
+# USD output
 maze_to_usd("maze.yaml", "maze.usda")
 
-# OBJ bundle output (visual.obj + collider.obj + textures/)
+# OBJ bundle output
 maze_to_obj("maze.yaml", "maze_obj_bundle")
 
-# Export in config frame (no X/Y flip)
+# Keep config frame (no Y flip)
 maze_to_usd(
     "maze.yaml",
     "maze_config_frame.usda",
     export_options=ExportOptions(target_frame="config"),
 )
 
-# Texture mapping by element name
+# Per-element texture override
 source = MaterialSource(textures={"wall_1": "/abs/path/wall_1.jpg"})
 maze_to_obj("maze.yaml", "maze_obj_bundle_textured", material_source=source)
-maze_to_usd("maze.yaml", "maze_textured.usda", material_source=source)
 
-# External USD material mapping by element name (USD output)
+# External USD material reference
 source = MaterialSource(
     usd_materials={
         "wall_2": UsdMaterialRef(
@@ -92,42 +123,38 @@ source = MaterialSource(
 )
 maze_to_usd("maze.yaml", "maze_external.usda", material_source=source)
 
-# Discover packaged textures and materials
+# Use packaged assets
 source = discover_default_materials()
-source = discover_all_default_materials()
 ```
 
-## Material Resolution
+## Output Layout
+
+### USD
+
+- `/Maze/Walls/merged_walls`: merged visual mesh.
+- Material subsets under merged mesh per `element_name`.
+- `/Maze/Colliders/collider_*`: non-overlapping compound collider boxes (`UsdPhysics.CollisionAPI`).
+- `/Maze/Materials/*`: generated/referenced material prims.
+
+### OBJ bundle
+
+- `visual.obj` + `visual.mtl`
+- `collider.obj` + `collider.mtl`
+- `textures/` with copied texture files referenced by `visual.mtl`
+
+## Material Resolution Priority
 
 For each wall element name:
 
-If the same element name exists in both `usd_materials` and `textures`, both are allowed.
+- USD export:
+  1. `MaterialSource.usd_materials[element]`
+  2. `MaterialSource.textures[element]`
+  3. procedural preview material (from `material_map` or generated palette)
+- OBJ export:
+  1. `MaterialSource.textures[element]` -> `map_Kd`
+  2. fallback color `Kd` from `material_map`/generated palette
 
-USD output:
-1. `MaterialSource.usd_materials[element_name]`
-2. `MaterialSource.textures[element_name]`
-3. procedural preview material (`material_map` override or generated color)
+## Default Assets
 
-OBJ visual output:
-1. `MaterialSource.textures[element_name]` -> `map_Kd` in `visual.mtl`
-2. fallback diffuse color (`Kd`) from `material_map`/generated color
-
-## Failure Behavior
-
-The package is fail-fast by design:
-- missing maze file -> `FileNotFoundError`
-- invalid maze spec/layout -> `ValueError` / `TypeError`
-- missing texture/USD material path -> `FileNotFoundError`
-- invalid discovered USD material file (no material prims) -> `ValueError`
-- missing `manifold3d` for merged wall generation -> `ImportError`
-- failed boolean union result -> `RuntimeError`
-
-## Package Layout
-
-- `maze_generator/__init__.py`: public API
-- `maze_generator/__main__.py`: CLI entrypoint
-- `maze_generator/maze_geometry/`: extraction and wall box models
-- `maze_generator/maze_materials/`: material models and discovery
-- `maze_generator/maze_boolean/`: boolean union integration
-- `maze_generator/maze_usd/`: USD stage/material/wall writing pipeline
-- `maze_generator/maze_obj/`: OBJ bundle writing pipeline
+Packaged defaults live under `src/maze_generator/default_assets/`.  
+See [`default_assets/README.md`](src/maze_generator/default_assets/README.md) for naming and discovery rules.

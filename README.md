@@ -1,39 +1,83 @@
 # py-ant-maze
 
-Monorepo for maze authoring, serialization, and USD generation.
+Monorepo for maze definition, editing, image conversion, and geometry export.
 
 ## Packages
 
 | Package | Purpose |
 | --- | --- |
-| [`py_ant_maze`](py_ant_maze) | Maze model + YAML parsing/validation/editing APIs + 2D image-to-YAML inversion + 2D config-to-image rendering |
-| [`maze_generator`](maze_generator) | Convert maze YAML to USD with materials/textures |
-| [`maze_editor`](maze_editor) | Browser editor (React + Pyodide) for interactive maze editing |
+| [`py_ant_maze`](py_ant_maze) | Core Python model/parsing/editing runtime for maze YAML (2D + 3D types) |
+| [`maze_generator`](maze_generator) | Geometry export pipeline (YAML -> USD/OBJ) with material |
+| [`maze_editor`](maze_editor) | Browser editor (React + Pyodide) for interactive authoring and visualization |
 
-## Quick Setup
+## Repository Structure
 
-Install the Python packages in editable mode:
+```text
+py-ant-maze/
+├── README.md
+├── LICENSE
+├── examples/                    # Sample YAML/PNG/USD/OBJ outputs
+├── py_ant_maze/                 # Core Python package
+│   ├── src/py_ant_maze/
+│   └── examples/
+├── maze_generator/              # USD/OBJ export package
+│   └── src/maze_generator/
+└── maze_editor/                 # React + Pyodide web editor
+    ├── src/
+    ├── public/
+    └── media/                   # Demo GIFs
+```
+
+## Features
+
+| Capability | `py_ant_maze` | `maze_generator` | `maze_editor` |
+| --- | --- | --- | --- |
+| Parse + validate maze YAML | Yes | Via `py_ant_maze` | Yes (via Pyodide) |
+| Mutable editing API | Yes (`MazeDraft`) | No | Yes (visual + YAML) |
+| 2D maze families (`occupancy_grid`, `edge_grid`, `radial_arm`) | Yes | `occupancy_grid`, `edge_grid` | Yes |
+| 3D maze families (`*_3d`) | Yes | Not exported yet | Yes |
+| YAML -> image | Yes (2D occupancy/edge) | No | Yes (PNG export) |
+| USD/OBJ export | No | Yes | No |
+
+## Quick Start
+
+### 1) Install Python packages
 
 ```bash
 pip install -e py_ant_maze
 pip install -e maze_generator
 ```
 
-Run the USD generator CLI:
+### 2) Work with mazes in Python
 
-```bash
-maze-generator path/to/maze.yaml -o path/to/output.usda
-maze-generator path/to/maze.yaml --format obj -o path/to/output_bundle
-maze-generator path/to/maze-layout.png --from-image -o path/to/inferred.yaml
+```python
+from py_ant_maze import Maze
 
-# render image directly from YAML/config (2D occupancy/edge)
-python -c "from py_ant_maze import config_file_to_image; config_file_to_image('path/to/maze.yaml', 'path/to/maze-layout.png')"
+maze = Maze.from_file("path/to/maze.yaml")
+print(maze.to_text(with_grid_numbers=True))
 ```
 
-Use the web editor:
+### 3) Convert between YAML and images (2D occupancy/edge only)
 
-- Deployed app: open https://maze.yihao.one
-- Local development:
+```python
+from py_ant_maze import image_to_yaml_file, config_file_to_image
+config_file_to_image("maze.yaml", "maze-layout.png")
+```
+
+### 4) Export geometry
+
+```bash
+# USD
+maze-generator path/to/maze.yaml -o path/to/output.usda
+
+# OBJ bundle (visual.obj, collider.obj, textures/)
+maze-generator path/to/maze.yaml --format obj -o path/to/output_obj_bundle
+```
+
+### 5) Use the editor
+
+- Deployed app: https://maze.yihao.one
+- Local dev:
 
 ```bash
 cd py_ant_maze
@@ -46,22 +90,6 @@ npm run dev
 
 Then open the Vite URL shown in the terminal (usually `http://localhost:5173`).
 
-## Maze Editor Demos
-
-| Demo | Preview |
-| --- | --- |
-| Maze families and templates | ![Maze families and templates](maze_editor/media/maze_types.gif) |
-| 2D and 3D editing | ![2D and 3D editing](maze_editor/media/2d_3d_mazes.gif) |
-| Add start/end points | ![Add start/end points](maze_editor/media/exp_add_start_end.gif) |
-| Occupancy cell size controls | ![Occupancy cell size controls](maze_editor/media/occupancy_cell_size.gif) |
-| Paint occupancy cells | ![Paint occupancy cells](maze_editor/media/paint_cells.gif) |
-| Edge-grid editing | ![Edge-grid editing](maze_editor/media/edge_grid.gif) |
-| Add elements and connectors | ![Add elements and connectors](maze_editor/media/add_elements.gif) |
-| Radial-arm editing | ![Radial-arm editing](maze_editor/media/radial_arm.gif) |
-| Radial-arm polygon editing | ![Radial-arm polygon editing](maze_editor/media/radial_arm_polygon.gif) |
-| Save YAML config | ![Save YAML config](maze_editor/media/save_config.gif) |
-| Save PNG image | ![Save PNG image](maze_editor/media/save_image.gif) |
-
 ## Maze Families
 
 | Family | 2D | 3D |
@@ -70,12 +98,27 @@ Then open the Vite URL shown in the terminal (usually `http://localhost:5173`).
 | Edge Grid | `edge_grid` | `edge_grid_3d` |
 | Radial Arm | `radial_arm` | `radial_arm_3d` |
 
+## Maze Editor Demos
+
+| Demo | Preview |
+| --- | --- |
+| Maze types | ![Maze types](media/maze_types.gif) |
+| 2D and 3D mazes | ![2D and 3D mazes](media/2d_3d_mazes.gif) |
+| Occupancy grid size | ![Occupancy grid size](media/occupancy_cell_size.gif) |
+| Paint occupancy cells | ![Paint occupancy cells](media/paint_cells.gif) |
+| Add elements | ![Add elements](media/add_elements.gif) |
+| Add start/end | ![Add start/end](media/exp_add_start_end.gif) |
+| Save YAML config | ![Save YAML config](media/save_config.gif) |
+| Save PNG image | ![Save PNG image](media/save_image.gif) |
+| Edge-grid type | ![Edge-grid type](media/edge_grid.gif) |
+| Radial-arm type | ![Radial-arm type](media/radial_arm.gif) |
+| Radial-arm polygon type | ![Radial-arm polygon type](media/radial_arm_polygon.gif) |
+
+
 ## Notes
 
-- `maze_generator` uses strict failure behavior (no silent fallback for invalid inputs or missing required dependencies).
-- USD export always writes merged visual walls plus separate box-compound colliders (`/Maze/Colliders`).
-- OBJ export writes a bundle directory containing `visual.obj`, `collider.obj`, and copied `textures/`.
-- `py_ant_maze.convert_config2img` intentionally mirrors maze editor rendering logic in Python. It is a copied implementation; `maze_editor` code remains separate.
+- USD export writes merged visual walls at `/Maze/Walls/merged_walls` plus separate compound box colliders at `/Maze/Colliders/*`.
+- OBJ export writes `visual.obj`, `collider.obj`, and copied textures into a bundle directory.
 
 ## License
 

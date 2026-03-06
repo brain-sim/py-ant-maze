@@ -1,103 +1,50 @@
 # py_ant_maze
 
-Python package for maze definitions, validation, editing, and runtime utilities.
+Core Python package for maze parsing, validation, editing, serialization, runtime queries, and 2D image conversion.
 
 ## Install
 
 ```bash
+cd py_ant_maze
 pip install -e .
 ```
 
-## Design
+## Architecture
 
-`Maze` is the single source of truth.
+### 1) Immutable + mutable model
 
-- `Maze`: immutable parsed maze object for runtime and serialization.
-- `MazeDraft`: mutable editing surface used only when changing maze content.
-- `py_ant_maze.runtime`: derived runtime views and fast query utilities built from a `Maze` object.
+- `Maze`: immutable validated maze object for runtime and serialization.
+- `MazeDraft`: mutable editing surface (`thaw()` -> edit -> `freeze()`).
 
-Runtime code should consume `Maze`, not config file paths.
+### 2) Handler-based maze-type system
 
-## Public API
+- `core/handlers.py` defines the handler interface.
+- `core/registry.py` maps `maze_type` -> concrete handler.
+- `mazes/two_d/*` and `mazes/three_d/*` implement per-type config/layout parsing and validation.
 
-```python
-from py_ant_maze import (
-    Maze,
-    MazeDraft,
-    config_file_to_image,
-    maze_to_image_file,
-    image_to_yaml_file,
-    infer_maze_yaml_from_image,
-)
+### 3) Runtime utilities on top of `Maze`
 
-maze = Maze.from_file("maze.yaml")
-print(maze.to_text(with_grid_numbers=True))
+- `runtime/MazeRuntime`: rectangular cell view + element semantics index.
+- `runtime/MazeSpatialRuntime`: wall-segment spatial queries (distance, sampling), currently for 2D `occupancy_grid` and `edge_grid`.
+- `runtime/MazeFrameTransformer`: `config` vs `simulation` frame conversion.
 
-draft = maze.thaw()
-draft.set_cell(1, 2, 0)
-updated = draft.freeze()
-updated.to_file("updated_maze.yaml")
+## Code Structure
 
-yaml_text = infer_maze_yaml_from_image("maze-layout.png", maze_type="auto")
-written = image_to_yaml_file("maze-layout.png", "inferred.yaml", maze_type="edge_grid")
-
-image_path = config_file_to_image("maze.yaml", "maze-layout.png")
-maze_image_path = maze_to_image_file(updated, "updated-maze-layout.png")
+```text
+src/py_ant_maze/
+├── __init__.py                  # Public API exports
+├── maze.py                      # Maze and MazeDraft
+├── core/
+│   ├── handlers.py              # MazeTypeHandler interface
+│   ├── registry.py              # Handler registration/lookup
+│   ├── parsing/                 # Shared parsing helpers
+│   └── structures/              # ElementSet and grid parsing/formatting
+├── mazes/
+│   ├── two_d/                   # occupancy_grid, edge_grid, radial_arm
+│   └── three_d/                 # occupancy_grid_3d, edge_grid_3d, radial_arm_3d
+├── runtime/                     # Runtime, semantics, spatial queries, frames
+└── io/                          # YAML dump helpers (literal blocks, token quoting)
 ```
-
-## Runtime
-
-### Build Runtime View From `Maze`
-
-```python
-from py_ant_maze import Maze
-from py_ant_maze.runtime import MazeRuntime
-
-maze = Maze.from_file("maze.yaml")
-runtime = MazeRuntime.from_maze(maze)
-
-print(runtime.maze_type)
-print(runtime.rows, runtime.cols)
-print(runtime.cell_size)
-```
-
-`runtime` contains derived metadata:
-- `cells`: rectangular integer cell grid view.
-- `semantics`: generic name -> values index from `cell_elements` and `wall_elements`.
-
-```python
-start_values = runtime.semantics.values_for_cell_names(["start", "spawn"])
-wall_values = runtime.semantics.values_for_wall_names(["wall", "wall_1"])
-```
-
-Semantic meaning stays simulator/task-specific.
-
-### Frame Conversion
-
-```python
-from py_ant_maze.runtime import MazeFrameTransformer
-
-tf = MazeFrameTransformer("simulation")
-x, y = tf.cell_center(row=2, col=3, rows=runtime.rows, cell_size=runtime.cell_size)
-```
-
-Supported frames:
-- `config`: raw YAML/image indexing
-- `simulation`: Y-only flip (`(x, y) -> (x, H - y)`)
-
-## Image Inversion Scope
-
-- maze types: `occupancy_grid`, `edge_grid`
-- dimensionality: 2D only
-- source: layout image (best effort for editor-exported images)
-- generated names/tokens/values are canonical defaults
-
-## Config-to-Image Scope
-
-- maze types: `occupancy_grid`, `edge_grid`
-- dimensionality: 2D only
-- style: mirrors maze editor rendering rules for cell size, wall thickness, and color mapping
-- source of truth: Python renderer implementation in this package
 
 ## Supported Maze Types
 
@@ -108,51 +55,54 @@ Supported frames:
 - `edge_grid_3d`
 - `radial_arm_3d`
 
-## YAML Shape
+3D types require at least two levels and support validated `elevator`/`escalator` connectors.
 
-Top-level keys:
-- `maze_type`
-- `config`
-- `layout`
+## Typical Usage
 
-Minimal example:
+```python
+from py_ant_maze import Maze
 
-```yaml
-maze_type: occupancy_grid
-config:
-  cell_elements:
-    - name: open
-      token: '.'
-  wall_elements:
-    - name: wall
-      token: '#'
-layout:
-  grid: |
-    # # #
-    # . #
-    # # #
+# Parse and inspect
+maze = Maze.from_file("maze.yaml")
+print(maze.to_text(with_grid_numbers=True))
+
+# Edit through draft API
+draft = maze.thaw()
+draft.set_cell(1, 2, 0)  # for occupancy_grid / edge_grid cell layers
+updated = draft.freeze()
+updated.to_file("updated_maze.yaml", with_grid_numbers=True)
 ```
 
-## Editing Helpers (`MazeDraft`)
+Additional draft mutators:
 
-- `set_cell(row, col, value, level=...)`
 - `set_wall(row, col, value, wall_type, level=...)`
 - `set_arm_cell(arm, row, col, value, level=...)`
 - `set_arm_wall(arm, row, col, value, wall_type, level=...)`
 
-For 3D types, `level` is required. For edge/radial wall editing, `wall_type` must be `vertical` or `horizontal`.
+For `*_3d`, `level` is required. For wall editing, `wall_type` must be `vertical` or `horizontal`.
 
-## Package Layout
+## Runtime Usage
 
-- `src/py_ant_maze/maze.py`: `Maze` and `MazeDraft`
-- `src/py_ant_maze/runtime/runtime.py`: `MazeRuntime`
-- `src/py_ant_maze/runtime/spatial.py`: spatial wall/cell query runtime
-- `src/py_ant_maze/runtime/frames.py`: frame helpers
-- `src/py_ant_maze/runtime/extractors.py`: maze-type cell extraction strategies
-- `src/py_ant_maze/runtime/semantics.py`: generic semantics index builder
-- `src/py_ant_maze/convert_img2config/`: 2D image-to-YAML inversion pipeline
-- `src/py_ant_maze/convert_config2img/`: 2D config/YAML-to-image rendering pipeline
-- `src/py_ant_maze/core/`: handler interfaces, registry, shared structures, parsing helpers
-- `src/py_ant_maze/mazes/two_d/`: 2D maze handlers
-- `src/py_ant_maze/mazes/three_d/`: 3D maze handlers
-- `src/py_ant_maze/io/`: YAML serialization helpers
+```python
+from py_ant_maze import Maze
+from py_ant_maze.runtime import MazeRuntime, MazeSpatialRuntime
+
+maze = Maze.from_file("maze.yaml")
+runtime = MazeRuntime.from_maze(maze)
+print(runtime.rows, runtime.cols, runtime.cell_size)
+
+spatial = MazeSpatialRuntime.from_maze(maze)  # occupancy_grid or edge_grid
+distances = spatial.get_wall_distances([[0.0, 0.0, 0.0]])
+```
+
+Runtime semantics index example:
+
+```python
+start_values = runtime.semantics.values_for_cell_names(["start", "spawn"])
+wall_values = runtime.semantics.values_for_wall_names(["wall", "wall_1"])
+```
+
+## Notes
+
+- YAML serialization preserves readable block formatting (`|`) for layouts and quoted single-char tokens.
+- Examples live under `py_ant_maze/examples/`.

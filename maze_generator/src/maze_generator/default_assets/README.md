@@ -1,38 +1,64 @@
 # default_assets
 
-Packaged assets consumed by `maze_generator.maze_materials.discovery`.
+Packaged material library used by `maze_generator.maze_materials.discovery`.
 
-## Layout
+## Directory Layout
 
-- `textures/`: image files discovered as wall textures
-- `materials/`: USD files scanned recursively for `UsdShade.Material` prims
+```text
+default_assets/
+├── textures/                    # 2D textures (used for OBJ map_Kd or USD preview texture)
+└── materials/                   # USD files containing UsdShade.Material prims
+```
 
-## Naming Rule
+## Mapping Rules
 
-Texture filename stem maps directly to maze element name.
+### Textures
 
-Examples:
-- `wall_1.jpg` -> `wall_1`
-- `door.png` -> `door`
-
-Single-material USD file mapping:
-- if file is under `materials/<element>/...`, it maps to `<element>`
-- otherwise it maps by file stem
-
-Multi-material USD file maps by material prim name.
+Texture filename stem maps directly to element name.
 
 Examples:
-- `materials/wall_1/wall_1.usd` (single material) -> `wall_1`
-- `/Materials/wall_2` (inside multi-material USD) -> `wall_2`
 
-## Discovery Behavior
+- `textures/wall_1.jpg` -> element `wall_1`
+- `textures/door.png` -> element `door`
 
-- `discover_default_materials()` defaults to `*.jpg`
-- `discover_all_default_materials()` searches `*.jpg`, `*.jpeg`, `*.png`, `*.exr`, `*.tif`, `*.tiff`
-- USD discovery patterns: `*.usd`, `*.usda`, `*.usdc`, `*.usdz`
-- Missing `default_assets` or `textures` directory raises `FileNotFoundError`
-- Missing `materials` directory raises `FileNotFoundError`
-- USD files without `UsdShade.Material` prims raise `ValueError`
-- Duplicate element names within discovered textures or discovered USD materials raise `ValueError`
-- If both texture and USD material exist for one element, USD material is used
-- Empty combined discovery result raises `FileNotFoundError` unless `allow_empty=True`
+### USD materials
+
+If a USD file contains exactly one `UsdShade.Material`:
+
+- under `materials/<element>/...` -> map to `<element>`
+- otherwise -> map by file stem
+
+If a USD file contains multiple `UsdShade.Material` prims:
+
+- each material maps by its prim name (`/Materials/Concrete` -> `Concrete`)
+
+## Discovery APIs
+
+- `discover_default_materials()`:
+  - texture pattern default: `*.jpg`
+  - USD patterns: `*.usd`, `*.usda`, `*.usdc`, `*.usdz`
+- `discover_all_default_materials()`:
+  - texture patterns: `*.jpg`, `*.jpeg`, `*.png`, `*.exr`, `*.tif`, `*.tiff`
+  - USD patterns: same as above
+
+## Resolution Priority in Export
+
+If both texture and USD material exist for the same element:
+
+- USD export prefers the discovered USD material.
+- OBJ export uses textures only (USD material references are ignored for OBJ).
+
+## Adding New Assets
+
+1. Add texture(s) in `textures/` named after target element(s).
+2. Add USD material file(s) in `materials/` if needed.
+3. Ensure element names are unique within each discovered set.
+4. Verify discovery:
+
+```python
+from maze_generator import discover_all_default_materials
+
+source = discover_all_default_materials()
+print(source.textures.keys())
+print(source.usd_materials.keys())
+```
