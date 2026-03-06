@@ -102,17 +102,19 @@ Then open the Vite URL shown in the terminal (usually `http://localhost:5173`).
 
 | Demo | Preview |
 | --- | --- |
-| Maze types | ![Maze types](media/maze_types.gif) |
-| 2D and 3D mazes | ![2D and 3D mazes](media/2d_3d_mazes.gif) |
-| Occupancy grid size | ![Occupancy grid size](media/occupancy_cell_size.gif) |
-| Paint occupancy cells | ![Paint occupancy cells](media/paint_cells.gif) |
-| Add elements | ![Add elements](media/add_elements.gif) |
-| Add start/end | ![Add start/end](media/exp_add_start_end.gif) |
-| Save YAML config | ![Save YAML config](media/save_config.gif) |
-| Save PNG image | ![Save PNG image](media/save_image.gif) |
-| Edge-grid type | ![Edge-grid type](media/edge_grid.gif) |
-| Radial-arm type | ![Radial-arm type](media/radial_arm.gif) |
-| Radial-arm polygon type | ![Radial-arm polygon type](media/radial_arm_polygon.gif) |
+| Maze families and templates | ![Maze families and templates](maze_editor/media/maze_types.gif) |
+| 2D and 3D editing | ![2D and 3D editing](maze_editor/media/2d_3d_mazes.gif) |
+| Add start/end points | ![Add start/end points](maze_editor/media/exp_add_start_end.gif) |
+| Occupancy cell size controls | ![Occupancy cell size controls](maze_editor/media/occupancy_cell_size.gif) |
+| Paint occupancy cells | ![Paint occupancy cells](maze_editor/media/paint_cells.gif) |
+| Edge-grid editing | ![Edge-grid editing](maze_editor/media/edge_grid.gif) |
+| Add elements and connectors | ![Add elements and connectors](maze_editor/media/add_elements.gif) |
+| Radial-arm editing | ![Radial-arm editing](maze_editor/media/radial_arm.gif) |
+| Radial-arm polygon editing | ![Radial-arm polygon editing](maze_editor/media/radial_arm_polygon.gif) |
+| Save YAML config | ![Save YAML config](maze_editor/media/save_config.gif) |
+| Save PNG image | ![Save PNG image](maze_editor/media/save_image.gif) |
+
+
 
 
 ## Notes

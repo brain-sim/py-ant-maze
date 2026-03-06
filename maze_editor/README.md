@@ -88,15 +88,15 @@ Then open the Vite URL shown in terminal (usually `http://localhost:5173`).
 
 | Demo | Preview |
 | --- | --- |
-| Maze families and templates | ![Maze families and templates](maze_editor/media/maze_types.gif) |
-| 2D and 3D editing | ![2D and 3D editing](maze_editor/media/2d_3d_mazes.gif) |
-| Add start/end points | ![Add start/end points](maze_editor/media/exp_add_start_end.gif) |
-| Occupancy cell size controls | ![Occupancy cell size controls](maze_editor/media/occupancy_cell_size.gif) |
-| Paint occupancy cells | ![Paint occupancy cells](maze_editor/media/paint_cells.gif) |
-| Edge-grid editing | ![Edge-grid editing](maze_editor/media/edge_grid.gif) |
-| Add elements and connectors | ![Add elements and connectors](maze_editor/media/add_elements.gif) |
-| Radial-arm editing | ![Radial-arm editing](maze_editor/media/radial_arm.gif) |
-| Radial-arm polygon editing | ![Radial-arm polygon editing](maze_editor/media/radial_arm_polygon.gif) |
-| Save YAML config | ![Save YAML config](maze_editor/media/save_config.gif) |
-| Save PNG image | ![Save PNG image](maze_editor/media/save_image.gif) |
+| Maze families and templates | ![Maze families and templates](media/maze_types.gif) |
+| 2D and 3D editing | ![2D and 3D editing](media/2d_3d_mazes.gif) |
+| Add start/end points | ![Add start/end points](media/exp_add_start_end.gif) |
+| Occupancy cell size controls | ![Occupancy cell size controls](media/occupancy_cell_size.gif) |
+| Paint occupancy cells | ![Paint occupancy cells](media/paint_cells.gif) |
+| Edge-grid editing | ![Edge-grid editing](media/edge_grid.gif) |
+| Add elements and connectors | ![Add elements and connectors](media/add_elements.gif) |
+| Radial-arm editing | ![Radial-arm editing](media/radial_arm.gif) |
+| Radial-arm polygon editing | ![Radial-arm polygon editing](media/radial_arm_polygon.gif) |
+| Save YAML config | ![Save YAML config](media/save_config.gif) |
+| Save PNG image | ![Save PNG image](media/save_image.gif) |
 
