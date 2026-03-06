@@ -74,8 +74,9 @@ Arguments:
   - `.obj` or `_obj`/`_obj_bundle` name hint => OBJ
   - `.usd/.usda/.usdc/.usdz` => USD
   - fallback default => USD
-- `--frame {simulation,config}`:
-  - `simulation` (default): Y-flipped map orientation
+- `--frame {simulation_genesis,simulation_isaac,config}`:
+  - `simulation_genesis` (default): Y-flipped map orientation
+  - `simulation_isaac`: X+Y flipped map orientation
   - `config`: authored indexing/orientation
 
 Default output path when `--output` is omitted:

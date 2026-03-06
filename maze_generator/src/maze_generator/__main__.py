@@ -35,10 +35,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--frame",
-        choices=("simulation", "config"),
-        default="simulation",
+        choices=("simulation_genesis", "simulation_isaac", "config"),
+        default="simulation_genesis",
         help=(
-            "Output coordinate frame. 'simulation' flips map Y from config-image indexing; "
+            "Output coordinate frame. "
+            "'simulation_genesis' flips Y from config indexing. "
+            "'simulation_isaac' flips both X and Y. "
             "'config' preserves original layout indexing."
         ),
     )
