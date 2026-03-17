@@ -22,7 +22,14 @@ def create_preview_material(stage, mat_path: str, element_name: str, color: Colo
     return material
 
 
-def create_texture_material(stage, mat_path: str, element_name: str, texture_path: str):
+def create_texture_material(
+    stage,
+    mat_path: str,
+    element_name: str,
+    texture_path: str,
+    *,
+    repeat: bool = True,
+):
     _ = element_name
     path = Path(texture_path)
     if not path.is_file():
@@ -41,8 +48,9 @@ def create_texture_material(stage, mat_path: str, element_name: str, texture_pat
     texture_shader.CreateIdAttr("UsdUVTexture")
     texture_shader.CreateInput("file", Sdf.ValueTypeNames.Asset).Set(str(path.resolve()))
     texture_shader.CreateInput("sourceColorSpace", Sdf.ValueTypeNames.Token).Set("sRGB")
-    texture_shader.CreateInput("wrapS", Sdf.ValueTypeNames.Token).Set("repeat")
-    texture_shader.CreateInput("wrapT", Sdf.ValueTypeNames.Token).Set("repeat")
+    wrap_mode = "repeat" if repeat else "clamp"
+    texture_shader.CreateInput("wrapS", Sdf.ValueTypeNames.Token).Set(wrap_mode)
+    texture_shader.CreateInput("wrapT", Sdf.ValueTypeNames.Token).Set(wrap_mode)
 
     texture_shader.CreateInput("st", Sdf.ValueTypeNames.Float2).ConnectToSource(
         primvar_reader.ConnectableAPI(),

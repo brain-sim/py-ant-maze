@@ -20,6 +20,7 @@ Examples:
 
 - `textures/wall_1.jpg` -> element `wall_1`
 - `textures/door.png` -> element `door`
+- `textures/wall_1_stretch.jpg` -> preferred override for maze element `wall_1`
 
 ### USD materials
 
@@ -47,6 +48,10 @@ If both texture and USD material exist for the same element:
 
 - USD export prefers the discovered USD material.
 - OBJ export uses textures only (USD material references are ignored for OBJ).
+
+If both `<element>` and `<element>_stretch` assets exist:
+
+- lookup for maze element `<element>` prefers `<element>_stretch`
 
 ## Adding New Assets
 

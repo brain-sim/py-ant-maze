@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
-from typing import Iterable
+from typing import Iterable, Literal, cast
 
 import numpy as np
 import trimesh
@@ -12,6 +12,7 @@ from pxr import Gf
 from ..maze_geometry.models import Vec3
 
 BoxSpec = tuple[Vec3, Vec3]
+UvMode = Literal["repeat", "stretch"]
 
 
 def create_box_trimesh(center: Vec3, size: Vec3):
@@ -78,30 +79,149 @@ def convex_segment_boxes(boxes: Iterable[BoxSpec], *, decimals: int = 9) -> list
     return segments
 
 
-def trimesh_to_usd_data(mesh) -> tuple[list, list[int], list[int], list]:
-    """Convert trimesh to USD mesh data with world-space UVs."""
-    vertices = [Gf.Vec3f(*vertex) for vertex in mesh.vertices]
-    face_counts = [3] * len(mesh.faces)
-    face_indices = mesh.faces.flatten().tolist()
+def mesh_face_varying_uvs(mesh, *, uv_mode: UvMode = "repeat") -> np.ndarray:
+    normalized_uv_mode = _normalize_uv_mode(uv_mode)
+    vertices = np.asarray(mesh.vertices, dtype=np.float64)
+    faces = np.asarray(mesh.faces, dtype=np.int64)
+    if faces.ndim != 2 or faces.shape[1] != 3:
+        raise ValueError("Wall mesh must be triangulated")
 
-    uvs = []
-    for face in mesh.faces:
-        v0, v1, v2 = mesh.vertices[face]
+    uvs = np.empty((faces.shape[0] * 3, 2), dtype=np.float64)
+    component_labels: np.ndarray | None = None
+    component_bounds: tuple[np.ndarray, np.ndarray] | None = None
+
+    if normalized_uv_mode == "stretch" and len(faces):
+        component_labels = _face_components(len(faces), np.asarray(mesh.face_adjacency, dtype=np.int64))
+        component_bounds = _component_bounds(vertices, faces, component_labels)
+
+    for face_idx, face in enumerate(faces):
+        v0, v1, v2 = vertices[face]
         edge1 = v1 - v0
         edge2 = v2 - v0
         normal = np.cross(edge1, edge2)
         dominant_axis = int(np.argmax(np.abs(normal)))
+        base = 3 * face_idx
 
-        for vertex in (v0, v1, v2):
-            if dominant_axis == 0:
-                u, v = vertex[1], vertex[2]
-            elif dominant_axis == 1:
-                u, v = vertex[0], vertex[2]
-            else:
-                u, v = vertex[0], vertex[1]
-            uvs.append(Gf.Vec2f(float(u), float(v)))
+        face_component_bounds = None
+        if component_labels is not None and component_bounds is not None:
+            component_index = int(component_labels[face_idx])
+            mins, maxs = component_bounds
+            face_component_bounds = mins[component_index], maxs[component_index]
+
+        for local_idx, vertex in enumerate((v0, v1, v2)):
+            u, v = _project_uv(
+                vertex,
+                dominant_axis,
+                component_bounds=face_component_bounds,
+                stretch=normalized_uv_mode == "stretch",
+            )
+            uvs[base + local_idx] = (u, v)
+
+    return uvs
+
+
+def trimesh_to_usd_data(mesh, *, uv_mode: UvMode = "repeat") -> tuple[list, list[int], list[int], list]:
+    """Convert trimesh to USD mesh data with face-varying UVs."""
+    vertices = [Gf.Vec3f(*vertex) for vertex in mesh.vertices]
+    face_counts = [3] * len(mesh.faces)
+    face_indices = mesh.faces.flatten().tolist()
+    uv_array = mesh_face_varying_uvs(mesh, uv_mode=uv_mode)
+    uvs = [Gf.Vec2f(float(u), float(v)) for u, v in uv_array]
 
     return vertices, face_counts, face_indices, uvs
+
+
+def _normalize_uv_mode(value: str) -> UvMode:
+    normalized = str(value).strip().lower()
+    if normalized not in {"repeat", "stretch"}:
+        raise ValueError(f"uv_mode must be 'repeat' or 'stretch', got {value!r}")
+    return cast(UvMode, normalized)
+
+
+def _face_components(face_count: int, face_adjacency: np.ndarray) -> np.ndarray:
+    labels = np.full(face_count, -1, dtype=np.int64)
+    neighbors: list[list[int]] = [[] for _ in range(face_count)]
+
+    for face_a, face_b in face_adjacency:
+        a = int(face_a)
+        b = int(face_b)
+        neighbors[a].append(b)
+        neighbors[b].append(a)
+
+    component_index = 0
+    for start_face in range(face_count):
+        if labels[start_face] != -1:
+            continue
+
+        stack = [start_face]
+        labels[start_face] = component_index
+        while stack:
+            face_index = stack.pop()
+            for neighbor in neighbors[face_index]:
+                if labels[neighbor] != -1:
+                    continue
+                labels[neighbor] = component_index
+                stack.append(neighbor)
+
+        component_index += 1
+
+    return labels
+
+
+def _component_bounds(
+    vertices: np.ndarray,
+    faces: np.ndarray,
+    component_labels: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    component_count = int(component_labels.max()) + 1
+    mins = np.full((component_count, 3), np.inf, dtype=np.float64)
+    maxs = np.full((component_count, 3), -np.inf, dtype=np.float64)
+
+    for face_index, face in enumerate(faces):
+        component_index = int(component_labels[face_index])
+        face_vertices = vertices[face]
+        mins[component_index] = np.minimum(mins[component_index], np.min(face_vertices, axis=0))
+        maxs[component_index] = np.maximum(maxs[component_index], np.max(face_vertices, axis=0))
+
+    return mins, maxs
+
+
+def _project_uv(
+    vertex: np.ndarray,
+    dominant_axis: int,
+    *,
+    component_bounds: tuple[np.ndarray, np.ndarray] | None,
+    stretch: bool,
+) -> tuple[float, float]:
+    if dominant_axis == 0:
+        u_axis, v_axis = 1, 2
+    elif dominant_axis == 1:
+        u_axis, v_axis = 0, 2
+    else:
+        u_axis, v_axis = 0, 1
+
+    u = float(vertex[u_axis])
+    v = float(vertex[v_axis])
+    if not stretch or component_bounds is None:
+        return u, v
+
+    mins, maxs = component_bounds
+    return (
+        _normalize_uv_coordinate(u, mins[u_axis], maxs[u_axis]),
+        _normalize_uv_coordinate(v, mins[v_axis], maxs[v_axis]),
+    )
+
+
+def _normalize_uv_coordinate(value: float, lower: float, upper: float) -> float:
+    span = upper - lower
+    if span <= 1e-9:
+        return 0.0
+    normalized = (value - lower) / span
+    if normalized < 0.0:
+        return 0.0
+    if normalized > 1.0:
+        return 1.0
+    return float(normalized)
 
 
 def _expand_x(occupied: np.ndarray, x0: int, y0: int, z0: int) -> int:

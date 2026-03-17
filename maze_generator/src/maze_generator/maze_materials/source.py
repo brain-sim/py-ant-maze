@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
 
+_STRETCH_TEXTURE_MARKER = "_stretch"
+
 
 @dataclass(frozen=True, slots=True)
 class UsdMaterialRef:
@@ -41,22 +43,30 @@ class MaterialSource:
         object.__setattr__(self, "usd_materials", _normalize_usd_materials(self.usd_materials))
 
     def get_texture(self, element_name: str) -> str | None:
-        return self.textures.get(element_name)
+        for candidate_name in _material_resolution_names(element_name):
+            texture_path = self.textures.get(candidate_name)
+            if texture_path is not None:
+                return texture_path
+        return None
 
     def get_usd_material(self, element_name: str) -> UsdMaterialRef | None:
-        value = self.usd_materials.get(element_name)
-        if value is None:
-            return None
-        if isinstance(value, UsdMaterialRef):
-            return value
-        return UsdMaterialRef.from_mapping(value, element_name=element_name)
+        for candidate_name in _material_resolution_names(element_name):
+            value = self.usd_materials.get(candidate_name)
+            if value is None:
+                continue
+            if isinstance(value, UsdMaterialRef):
+                return value
+            return UsdMaterialRef.from_mapping(value, element_name=candidate_name)
+        return None
 
     def resolve_for_usd(self, element_name: str) -> tuple[UsdMaterialRef | None, str | None]:
         """Resolve material candidates for USD export.
 
         Priority order:
-        1) USD material
-        2) texture
+        1) USD material for `<element>_stretch`
+        2) USD material for `<element>`
+        3) texture for `<element>_stretch`
+        4) texture for `<element>`
         """
         usd_material = self.get_usd_material(element_name)
         if usd_material is not None:
@@ -67,12 +77,16 @@ class MaterialSource:
         """Resolve texture candidate for OBJ export.
 
         Priority order:
-        1) texture
+        1) texture for `<element>_stretch`
+        2) texture for `<element>`
         """
         return self.get_texture(element_name)
 
     def has_custom_material(self, element_name: str) -> bool:
-        return element_name in self.textures or element_name in self.usd_materials
+        return any(
+            candidate_name in self.textures or candidate_name in self.usd_materials
+            for candidate_name in _material_resolution_names(element_name)
+        )
 
 
 def _normalize_textures(textures: Mapping[str, str]) -> dict[str, str]:
@@ -112,3 +126,15 @@ def _validate_element_name(element_name: str) -> None:
         raise TypeError("element name must be a string")
     if not element_name:
         raise ValueError("element name must be non-empty")
+
+
+def texture_name_requests_stretch(texture_path: str) -> bool:
+    return _STRETCH_TEXTURE_MARKER in Path(texture_path).stem.lower()
+
+
+def _material_resolution_names(element_name: str) -> tuple[str, ...]:
+    _validate_element_name(element_name)
+    stretch_name = f"{element_name}{_STRETCH_TEXTURE_MARKER}"
+    if element_name.endswith(_STRETCH_TEXTURE_MARKER):
+        return (element_name,)
+    return stretch_name, element_name

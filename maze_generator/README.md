@@ -147,6 +147,9 @@ source = discover_default_materials()
 
 For each wall element name:
 
+- Extended identifier rule:
+  - `<element>_stretch` is checked before `<element>`
+  - example: maze element `wall_1` will prefer assets named `wall_1_stretch.*`
 - USD export:
   1. `MaterialSource.usd_materials[element]`
   2. `MaterialSource.textures[element]`

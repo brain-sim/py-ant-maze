@@ -14,12 +14,31 @@ from .mesh_primitives import box_mesh, sanitize_prim_name
 
 @dataclass(frozen=True, slots=True)
 class MergedWallWriter:
-    def write(self, stage, walls: tuple[WallBox, ...], materials: dict[str, object]) -> None:
+    def write(
+        self,
+        stage,
+        walls: tuple[WallBox, ...],
+        materials: dict[str, object],
+        *,
+        stretch_elements: set[str] | None = None,
+    ) -> None:
         if not walls:
             return
-        self._write_boolean_merged(stage, walls, materials)
+        self._write_boolean_merged(
+            stage,
+            walls,
+            materials,
+            stretch_elements=stretch_elements or set(),
+        )
 
-    def _write_boolean_merged(self, stage, walls: tuple[WallBox, ...], materials: dict[str, object]) -> None:
+    def _write_boolean_merged(
+        self,
+        stage,
+        walls: tuple[WallBox, ...],
+        materials: dict[str, object],
+        *,
+        stretch_elements: set[str],
+    ) -> None:
         grouped: dict[str, list[tuple[tuple[float, float, float], tuple[float, float, float]]]] = defaultdict(list)
         for wall in walls:
             grouped[wall.element_name].append((wall.center, wall.size))
@@ -35,7 +54,11 @@ class MergedWallWriter:
 
         for element_name, box_specs in sorted(grouped.items()):
             union_mesh = boolean_union_boxes(box_specs)
-            vertices, face_counts, face_indices, uvs = trimesh_to_usd_data(union_mesh)
+            uv_mode = "stretch" if element_name in stretch_elements else "repeat"
+            vertices, face_counts, face_indices, uvs = trimesh_to_usd_data(
+                union_mesh,
+                uv_mode=uv_mode,
+            )
 
             all_points.extend(vertices)
             all_face_counts.extend(face_counts)

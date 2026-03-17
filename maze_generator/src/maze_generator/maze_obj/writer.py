@@ -11,10 +11,15 @@ from pathlib import Path
 import numpy as np
 import trimesh
 
-from ..maze_boolean.union import boolean_union_boxes, convex_segment_boxes, create_box_trimesh
+from ..maze_boolean.union import (
+    boolean_union_boxes,
+    convex_segment_boxes,
+    create_box_trimesh,
+    mesh_face_varying_uvs,
+)
 from ..maze_geometry.models import MazeGeometry
 from ..maze_materials.color import ColorResolver, MaterialMap
-from ..maze_materials.source import MaterialSource
+from ..maze_materials.source import MaterialSource, texture_name_requests_stretch
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,7 +54,11 @@ def write_obj_bundle(
     collider_obj = bundle_dir / "collider.obj"
     collider_mtl = bundle_dir / "collider.mtl"
 
-    visual_chunks = _build_visual_chunks(geometry)
+    stretch_elements = _stretch_texture_elements(geometry, material_source)
+    visual_chunks = _build_visual_chunks(
+        geometry,
+        stretch_elements=stretch_elements,
+    )
     collider_chunks = _build_collider_chunks(geometry)
 
     _write_mtl(
@@ -75,15 +84,21 @@ def write_obj_bundle(
         raise RuntimeError(f"MTL file was not written: {collider_mtl}")
 
 
-def _build_visual_chunks(geometry: MazeGeometry) -> list[ObjChunk]:
+def _build_visual_chunks(
+    geometry: MazeGeometry,
+    *,
+    stretch_elements: set[str] | None = None,
+) -> list[ObjChunk]:
     grouped: dict[str, list[tuple[tuple[float, float, float], tuple[float, float, float]]]] = defaultdict(list)
     for wall in geometry.walls:
         grouped[wall.element_name].append((wall.center, wall.size))
 
     chunks: list[ObjChunk] = []
+    stretch_names = stretch_elements or set()
     for element_name, box_specs in sorted(grouped.items()):
         tmesh = boolean_union_boxes(box_specs)
-        vertices, faces, uvs = _mesh_with_world_uv(tmesh)
+        uv_mode = "stretch" if element_name in stretch_names else "repeat"
+        vertices, faces, uvs = _mesh_with_uv(tmesh, uv_mode=uv_mode)
         clean_name = _sanitize_name(element_name)
         chunks.append(
             ObjChunk(
@@ -107,7 +122,7 @@ def _build_collider_chunks(geometry: MazeGeometry) -> list[ObjChunk]:
     chunks: list[ObjChunk] = []
     for segment_index, (center, size) in enumerate(segments):
         tmesh = create_box_trimesh(center, size)
-        vertices, faces, uvs = _mesh_with_world_uv(tmesh)
+        vertices, faces, uvs = _mesh_with_uv(tmesh)
         chunks.append(
             ObjChunk(
                 object_name=f"collider_{segment_index:04d}",
@@ -121,7 +136,11 @@ def _build_collider_chunks(geometry: MazeGeometry) -> list[ObjChunk]:
     return chunks
 
 
-def _mesh_with_world_uv(mesh: trimesh.Trimesh) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _mesh_with_uv(
+    mesh: trimesh.Trimesh,
+    *,
+    uv_mode: str = "repeat",
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     vertices = np.asarray(mesh.vertices, dtype=np.float64)
     faces = np.asarray(mesh.faces, dtype=np.int64)
     if faces.ndim != 2 or faces.shape[1] != 3:
@@ -129,24 +148,7 @@ def _mesh_with_world_uv(mesh: trimesh.Trimesh) -> tuple[np.ndarray, np.ndarray, 
 
     expanded_vertices = vertices[faces.reshape(-1)]
     expanded_faces = np.arange(expanded_vertices.shape[0], dtype=np.int64).reshape(-1, 3)
-    uvs = np.empty((expanded_vertices.shape[0], 2), dtype=np.float64)
-
-    for face_idx, face in enumerate(faces):
-        v0, v1, v2 = vertices[face]
-        edge1 = v1 - v0
-        edge2 = v2 - v0
-        normal = np.cross(edge1, edge2)
-        dominant_axis = int(np.argmax(np.abs(normal)))
-        base = 3 * face_idx
-
-        for local_idx, vertex in enumerate((v0, v1, v2)):
-            if dominant_axis == 0:
-                u, v = vertex[1], vertex[2]
-            elif dominant_axis == 1:
-                u, v = vertex[0], vertex[2]
-            else:
-                u, v = vertex[0], vertex[1]
-            uvs[base + local_idx] = (float(u), float(v))
+    uvs = mesh_face_varying_uvs(mesh, uv_mode=uv_mode)
 
     return expanded_vertices, expanded_faces, uvs
 
@@ -293,3 +295,18 @@ def _sanitize_name(name: str) -> str:
     if clean[0].isdigit():
         return f"n_{clean}"
     return clean
+
+
+def _stretch_texture_elements(
+    geometry: MazeGeometry,
+    material_source: MaterialSource | None,
+) -> set[str]:
+    if material_source is None:
+        return set()
+
+    stretch_elements: set[str] = set()
+    for element_name in geometry.element_names:
+        texture_path = material_source.resolve_texture_for_obj(element_name)
+        if texture_path is not None and texture_name_requests_stretch(texture_path):
+            stretch_elements.add(element_name)
+    return stretch_elements

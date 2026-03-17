@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..maze_materials.color import ColorResolver, MaterialMap
-from ..maze_materials.source import MaterialSource
+from ..maze_materials.source import MaterialSource, texture_name_requests_stretch
 from ..maze_materials.usd_nodes import (
     create_preview_material,
     create_texture_material,
@@ -42,6 +42,7 @@ class MaterialLibrary:
                         mat_path,
                         element_name,
                         texture_path,
+                        repeat=not texture_name_requests_stretch(texture_path),
                     )
                     continue
 
