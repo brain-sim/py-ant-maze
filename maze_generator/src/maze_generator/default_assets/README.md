@@ -21,6 +21,12 @@ Examples:
 - `textures/wall_1.jpg` -> element `wall_1`
 - `textures/door.png` -> element `door`
 - `textures/wall_1_stretch.jpg` -> preferred override for maze element `wall_1`
+- `textures/wall_1_left.jpg` -> optional left-face override for maze element `wall_1`
+- `textures/wall_1_right.jpg` -> optional right-face override for maze element `wall_1`
+- `textures/wall_1_left_stretch.jpg` -> highest-priority left-face texture for maze element `wall_1`
+- `textures/wall_1_stretch_left.jpg` -> accepted alias for `wall_1_left_stretch`
+- `textures/wall_1_right_stretch.jpg` -> highest-priority right-face texture for maze element `wall_1`
+- `textures/wall_1_stretch_right.jpg` -> accepted alias for `wall_1_right_stretch`
 
 ### USD materials
 
@@ -52,6 +58,12 @@ If both texture and USD material exist for the same element:
 If both `<element>` and `<element>_stretch` assets exist:
 
 - lookup for maze element `<element>` prefers `<element>_stretch`
+
+If side-specific assets exist, they are optional overrides:
+
+- left-face lookup prefers `<element>_left_stretch`, then `<element>_stretch_left`, then `<element>_left`, then base assets
+- right-face lookup prefers `<element>_right_stretch`, then `<element>_stretch_right`, then `<element>_right`, then base assets
+- if no side-specific asset exists, export falls back to the base asset
 
 ## Adding New Assets
 

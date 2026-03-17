@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
-from typing import Iterable, Literal, cast
+from typing import Iterable, Literal, Sequence, cast
 
 import numpy as np
 import trimesh
@@ -13,6 +13,7 @@ from ..maze_geometry.models import Vec3
 
 BoxSpec = tuple[Vec3, Vec3]
 UvMode = Literal["repeat", "stretch"]
+FaceSide = Literal["left", "right"]
 
 
 def create_box_trimesh(center: Vec3, size: Vec3):
@@ -79,27 +80,56 @@ def convex_segment_boxes(boxes: Iterable[BoxSpec], *, decimals: int = 9) -> list
     return segments
 
 
-def mesh_face_varying_uvs(mesh, *, uv_mode: UvMode = "repeat") -> np.ndarray:
-    normalized_uv_mode = _normalize_uv_mode(uv_mode)
+def mesh_face_sides(mesh) -> list[FaceSide | None]:
     vertices = np.asarray(mesh.vertices, dtype=np.float64)
     faces = np.asarray(mesh.faces, dtype=np.int64)
     if faces.ndim != 2 or faces.shape[1] != 3:
         raise ValueError("Wall mesh must be triangulated")
 
+    face_sides: list[FaceSide | None] = []
+    for face in faces:
+        _, dominant_axis, dominant_sign = _face_normal_metadata(vertices, face)
+        if dominant_axis == 2:
+            face_sides.append(None)
+            continue
+        face_sides.append("right" if dominant_sign >= 0 else "left")
+    return face_sides
+
+
+def mesh_face_varying_uvs(
+    mesh,
+    *,
+    uv_mode: UvMode = "repeat",
+    face_uv_modes: Sequence[UvMode] | None = None,
+) -> np.ndarray:
+    normalized_uv_mode = _normalize_uv_mode(uv_mode)
+    normalized_face_uv_modes: list[UvMode] | None = None
+    vertices = np.asarray(mesh.vertices, dtype=np.float64)
+    faces = np.asarray(mesh.faces, dtype=np.int64)
+    if faces.ndim != 2 or faces.shape[1] != 3:
+        raise ValueError("Wall mesh must be triangulated")
+
+    if face_uv_modes is not None:
+        if len(face_uv_modes) != len(faces):
+            raise ValueError(
+                f"face_uv_modes must match face count: expected {len(faces)}, got {len(face_uv_modes)}"
+            )
+        normalized_face_uv_modes = [_normalize_uv_mode(value) for value in face_uv_modes]
+
     uvs = np.empty((faces.shape[0] * 3, 2), dtype=np.float64)
     component_labels: np.ndarray | None = None
     component_bounds: tuple[np.ndarray, np.ndarray] | None = None
 
-    if normalized_uv_mode == "stretch" and len(faces):
+    if len(faces) and (
+        normalized_uv_mode == "stretch"
+        or (normalized_face_uv_modes is not None and any(value == "stretch" for value in normalized_face_uv_modes))
+    ):
         component_labels = _face_components(len(faces), np.asarray(mesh.face_adjacency, dtype=np.int64))
         component_bounds = _component_bounds(vertices, faces, component_labels)
 
     for face_idx, face in enumerate(faces):
         v0, v1, v2 = vertices[face]
-        edge1 = v1 - v0
-        edge2 = v2 - v0
-        normal = np.cross(edge1, edge2)
-        dominant_axis = int(np.argmax(np.abs(normal)))
+        _, dominant_axis, _ = _face_normal_metadata(vertices, face)
         base = 3 * face_idx
 
         face_component_bounds = None
@@ -108,24 +138,33 @@ def mesh_face_varying_uvs(mesh, *, uv_mode: UvMode = "repeat") -> np.ndarray:
             mins, maxs = component_bounds
             face_component_bounds = mins[component_index], maxs[component_index]
 
+        face_uv_mode = normalized_uv_mode
+        if normalized_face_uv_modes is not None:
+            face_uv_mode = normalized_face_uv_modes[face_idx]
+
         for local_idx, vertex in enumerate((v0, v1, v2)):
             u, v = _project_uv(
                 vertex,
                 dominant_axis,
                 component_bounds=face_component_bounds,
-                stretch=normalized_uv_mode == "stretch",
+                stretch=face_uv_mode == "stretch",
             )
             uvs[base + local_idx] = (u, v)
 
     return uvs
 
 
-def trimesh_to_usd_data(mesh, *, uv_mode: UvMode = "repeat") -> tuple[list, list[int], list[int], list]:
+def trimesh_to_usd_data(
+    mesh,
+    *,
+    uv_mode: UvMode = "repeat",
+    face_uv_modes: Sequence[UvMode] | None = None,
+) -> tuple[list, list[int], list[int], list]:
     """Convert trimesh to USD mesh data with face-varying UVs."""
     vertices = [Gf.Vec3f(*vertex) for vertex in mesh.vertices]
     face_counts = [3] * len(mesh.faces)
     face_indices = mesh.faces.flatten().tolist()
-    uv_array = mesh_face_varying_uvs(mesh, uv_mode=uv_mode)
+    uv_array = mesh_face_varying_uvs(mesh, uv_mode=uv_mode, face_uv_modes=face_uv_modes)
     uvs = [Gf.Vec2f(float(u), float(v)) for u, v in uv_array]
 
     return vertices, face_counts, face_indices, uvs
@@ -166,6 +205,15 @@ def _face_components(face_count: int, face_adjacency: np.ndarray) -> np.ndarray:
         component_index += 1
 
     return labels
+
+
+def _face_normal_metadata(vertices: np.ndarray, face: np.ndarray) -> tuple[np.ndarray, int, float]:
+    v0, v1, v2 = vertices[face]
+    edge1 = v1 - v0
+    edge2 = v2 - v0
+    normal = np.cross(edge1, edge2)
+    dominant_axis = int(np.argmax(np.abs(normal)))
+    return normal, dominant_axis, float(normal[dominant_axis])
 
 
 def _component_bounds(

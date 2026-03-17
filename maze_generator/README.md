@@ -148,8 +148,12 @@ source = discover_default_materials()
 For each wall element name:
 
 - Extended identifier rule:
-  - `<element>_stretch` is checked before `<element>`
-  - example: maze element `wall_1` will prefer assets named `wall_1_stretch.*`
+  - side overrides are optional
+  - base lookup: `<element>_stretch` is checked before `<element>`
+  - side-face lookup: `<element>_<face>_stretch`, `<element>_stretch_<face>`, `<element>_<face>`, `<element>_stretch`, `<element>`
+  - examples:
+    - maze element `wall_1` will prefer assets named `wall_1_stretch.*` over `wall_1.*`
+    - left faces for maze element `wall_1` will prefer `wall_1_left_stretch.*`, then `wall_1_stretch_left.*`, then `wall_1_left.*`, then base assets
 - USD export:
   1. `MaterialSource.usd_materials[element]`
   2. `MaterialSource.textures[element]`

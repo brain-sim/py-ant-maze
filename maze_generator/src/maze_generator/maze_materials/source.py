@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Mapping
+from typing import Literal, Mapping
 
+FaceSide = Literal["left", "right"]
 _STRETCH_TEXTURE_MARKER = "_stretch"
+_LEFT_FACE_MARKER = "_left"
+_RIGHT_FACE_MARKER = "_right"
+_FACE_MARKERS: tuple[FaceSide, ...] = ("left", "right")
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,15 +46,15 @@ class MaterialSource:
         object.__setattr__(self, "textures", _normalize_textures(self.textures))
         object.__setattr__(self, "usd_materials", _normalize_usd_materials(self.usd_materials))
 
-    def get_texture(self, element_name: str) -> str | None:
-        for candidate_name in _material_resolution_names(element_name):
+    def get_texture(self, element_name: str, *, face: FaceSide | None = None) -> str | None:
+        for candidate_name in _material_resolution_names(element_name, face=face):
             texture_path = self.textures.get(candidate_name)
             if texture_path is not None:
                 return texture_path
         return None
 
-    def get_usd_material(self, element_name: str) -> UsdMaterialRef | None:
-        for candidate_name in _material_resolution_names(element_name):
+    def get_usd_material(self, element_name: str, *, face: FaceSide | None = None) -> UsdMaterialRef | None:
+        for candidate_name in _material_resolution_names(element_name, face=face):
             value = self.usd_materials.get(candidate_name)
             if value is None:
                 continue
@@ -59,33 +63,63 @@ class MaterialSource:
             return UsdMaterialRef.from_mapping(value, element_name=candidate_name)
         return None
 
-    def resolve_for_usd(self, element_name: str) -> tuple[UsdMaterialRef | None, str | None]:
+    def resolve_for_usd(
+        self,
+        element_name: str,
+        *,
+        face: FaceSide | None = None,
+    ) -> tuple[UsdMaterialRef | None, str | None]:
         """Resolve material candidates for USD export.
 
         Priority order:
+        Base faces:
         1) USD material for `<element>_stretch`
         2) USD material for `<element>`
         3) texture for `<element>_stretch`
         4) texture for `<element>`
+
+        Left/right faces:
+        1) USD material for `<element>_<face>_stretch`
+        2) USD material for `<element>_<face>`
+        3) USD material for `<element>_stretch`
+        4) USD material for `<element>`
+        5) texture for `<element>_<face>_stretch`
+        6) texture for `<element>_<face>`
+        7) texture for `<element>_stretch`
+        8) texture for `<element>`
         """
-        usd_material = self.get_usd_material(element_name)
+        usd_material = self.get_usd_material(element_name, face=face)
         if usd_material is not None:
             return usd_material, None
-        return None, self.get_texture(element_name)
+        return None, self.get_texture(element_name, face=face)
 
-    def resolve_texture_for_obj(self, element_name: str) -> str | None:
+    def resolve_texture_for_obj(self, element_name: str, *, face: FaceSide | None = None) -> str | None:
         """Resolve texture candidate for OBJ export.
 
         Priority order:
+        Base faces:
         1) texture for `<element>_stretch`
         2) texture for `<element>`
-        """
-        return self.get_texture(element_name)
 
-    def has_custom_material(self, element_name: str) -> bool:
+        Left/right faces:
+        1) texture for `<element>_<face>_stretch`
+        2) texture for `<element>_<face>`
+        3) texture for `<element>_stretch`
+        4) texture for `<element>`
+        """
+        return self.get_texture(element_name, face=face)
+
+    def has_custom_material(self, element_name: str, *, face: FaceSide | None = None) -> bool:
         return any(
             candidate_name in self.textures or candidate_name in self.usd_materials
-            for candidate_name in _material_resolution_names(element_name)
+            for candidate_name in _material_resolution_names(element_name, face=face)
+        )
+
+    def has_face_override(self, element_name: str) -> bool:
+        return any(
+            candidate_name in self.textures or candidate_name in self.usd_materials
+            for face in _FACE_MARKERS
+            for candidate_name in _face_specific_resolution_names(element_name, face=face)
         )
 
 
@@ -132,9 +166,43 @@ def texture_name_requests_stretch(texture_path: str) -> bool:
     return _STRETCH_TEXTURE_MARKER in Path(texture_path).stem.lower()
 
 
-def _material_resolution_names(element_name: str) -> tuple[str, ...]:
+def _material_resolution_names(
+    element_name: str,
+    *,
+    face: FaceSide | None = None,
+) -> tuple[str, ...]:
     _validate_element_name(element_name)
     stretch_name = f"{element_name}{_STRETCH_TEXTURE_MARKER}"
-    if element_name.endswith(_STRETCH_TEXTURE_MARKER):
-        return (element_name,)
-    return stretch_name, element_name
+    if face is None:
+        return stretch_name, element_name
+
+    face_marker = _face_marker(face)
+    face_name = f"{element_name}{face_marker}"
+    stretch_face_name = f"{stretch_name}{face_marker}"
+    return (
+        f"{face_name}{_STRETCH_TEXTURE_MARKER}",
+        stretch_face_name,
+        face_name,
+        stretch_name,
+        element_name,
+    )
+
+
+def _face_specific_resolution_names(
+    element_name: str,
+    *,
+    face: FaceSide,
+) -> tuple[str, str, str]:
+    _validate_element_name(element_name)
+    face_marker = _face_marker(face)
+    face_name = f"{element_name}{face_marker}"
+    stretch_name = f"{element_name}{_STRETCH_TEXTURE_MARKER}"
+    return f"{face_name}{_STRETCH_TEXTURE_MARKER}", f"{stretch_name}{face_marker}", face_name
+
+
+def _face_marker(face: FaceSide) -> str:
+    if face == "left":
+        return _LEFT_FACE_MARKER
+    if face == "right":
+        return _RIGHT_FACE_MARKER
+    raise ValueError(f"face must be 'left' or 'right', got {face!r}")

@@ -8,7 +8,7 @@ from pxr import Usd, UsdGeom
 
 from ..maze_geometry.models import MazeGeometry
 from ..maze_materials.color import MaterialMap
-from ..maze_materials.source import MaterialSource, texture_name_requests_stretch
+from ..maze_materials.source import FaceSide, MaterialSource, texture_name_requests_stretch
 from .material_library import MaterialLibrary
 from .wall_writers import (
     CompoundBoxColliderWriter,
@@ -42,17 +42,20 @@ def write_usd(
     UsdGeom.Xform.Define(stage, "/Maze/Walls")
     UsdGeom.Xform.Define(stage, "/Maze/Materials")
 
+    material_requests = _material_requests(geometry, material_source)
     materials = MaterialLibrary(material_map=material_map, material_source=material_source).create(
         stage,
-        geometry.element_names,
+        material_requests,
     )
-    stretch_elements = _stretch_texture_elements(geometry, material_source)
+    face_override_elements = _face_override_elements(geometry, material_source)
+    uv_modes = _material_request_uv_modes(material_requests, material_source)
 
     MergedWallWriter().write(
         stage,
         geometry.walls,
         materials,
-        stretch_elements=stretch_elements,
+        face_override_elements=face_override_elements,
+        uv_modes=uv_modes,
     )
     CompoundBoxColliderWriter().write(stage, geometry.walls)
 
@@ -61,16 +64,46 @@ def write_usd(
         raise RuntimeError(f"USD file was not written: {output}")
 
 
-def _stretch_texture_elements(
+def _face_override_elements(
     geometry: MazeGeometry,
     material_source: MaterialSource | None,
 ) -> set[str]:
     if material_source is None:
         return set()
 
-    stretch_elements: set[str] = set()
+    face_override_elements: set[str] = set()
     for element_name in geometry.element_names:
-        _, texture_path = material_source.resolve_for_usd(element_name)
-        if texture_path is not None and texture_name_requests_stretch(texture_path):
-            stretch_elements.add(element_name)
-    return stretch_elements
+        if material_source.has_face_override(element_name):
+            face_override_elements.add(element_name)
+    return face_override_elements
+
+
+def _material_requests(
+    geometry: MazeGeometry,
+    material_source: MaterialSource | None,
+) -> tuple[tuple[str, FaceSide | None], ...]:
+    requests: list[tuple[str, FaceSide | None]] = []
+    for element_name in geometry.element_names:
+        requests.append((element_name, None))
+        if material_source is not None and material_source.has_face_override(element_name):
+            requests.append((element_name, "left"))
+            requests.append((element_name, "right"))
+    return tuple(requests)
+
+
+def _material_request_uv_modes(
+    material_requests: tuple[tuple[str, FaceSide | None], ...],
+    material_source: MaterialSource | None,
+) -> dict[tuple[str, FaceSide | None], str]:
+    uv_modes: dict[tuple[str, FaceSide | None], str] = {}
+    for element_name, face in material_requests:
+        if material_source is None:
+            uv_modes[(element_name, face)] = "repeat"
+            continue
+        _, texture_path = material_source.resolve_for_usd(element_name, face=face)
+        uv_modes[(element_name, face)] = (
+            "stretch"
+            if texture_path is not None and texture_name_requests_stretch(texture_path)
+            else "repeat"
+        )
+    return uv_modes

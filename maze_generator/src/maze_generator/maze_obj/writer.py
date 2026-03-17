@@ -15,11 +15,14 @@ from ..maze_boolean.union import (
     boolean_union_boxes,
     convex_segment_boxes,
     create_box_trimesh,
+    mesh_face_sides,
     mesh_face_varying_uvs,
 )
 from ..maze_geometry.models import MazeGeometry
 from ..maze_materials.color import ColorResolver, MaterialMap
-from ..maze_materials.source import MaterialSource, texture_name_requests_stretch
+from ..maze_materials.source import FaceSide, MaterialSource, texture_name_requests_stretch
+
+MaterialKey = tuple[str, FaceSide | None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +30,7 @@ class ObjChunk:
     object_name: str
     material_name: str
     element_name: str
+    face_side: FaceSide | None
     vertices: np.ndarray
     faces: np.ndarray
     uvs: np.ndarray
@@ -54,10 +58,13 @@ def write_obj_bundle(
     collider_obj = bundle_dir / "collider.obj"
     collider_mtl = bundle_dir / "collider.mtl"
 
-    stretch_elements = _stretch_texture_elements(geometry, material_source)
+    face_override_elements = _face_override_elements(geometry, material_source)
+    material_requests = _material_requests(geometry, material_source)
+    uv_modes = _material_request_uv_modes(material_requests, material_source)
     visual_chunks = _build_visual_chunks(
         geometry,
-        stretch_elements=stretch_elements,
+        face_override_elements=face_override_elements,
+        uv_modes=uv_modes,
     )
     collider_chunks = _build_collider_chunks(geometry)
 
@@ -87,24 +94,45 @@ def write_obj_bundle(
 def _build_visual_chunks(
     geometry: MazeGeometry,
     *,
-    stretch_elements: set[str] | None = None,
+    face_override_elements: set[str] | None = None,
+    uv_modes: dict[MaterialKey, str] | None = None,
 ) -> list[ObjChunk]:
     grouped: dict[str, list[tuple[tuple[float, float, float], tuple[float, float, float]]]] = defaultdict(list)
     for wall in geometry.walls:
         grouped[wall.element_name].append((wall.center, wall.size))
 
     chunks: list[ObjChunk] = []
-    stretch_names = stretch_elements or set()
+    face_overrides = face_override_elements or set()
+    request_uv_modes = uv_modes or {}
     for element_name, box_specs in sorted(grouped.items()):
         tmesh = boolean_union_boxes(box_specs)
-        uv_mode = "stretch" if element_name in stretch_names else "repeat"
-        vertices, faces, uvs = _mesh_with_uv(tmesh, uv_mode=uv_mode)
-        clean_name = _sanitize_name(element_name)
+        if element_name in face_overrides:
+            face_sides = mesh_face_sides(tmesh)
+            face_uv_modes = [
+                request_uv_modes.get((element_name, face_side), "repeat")
+                for face_side in face_sides
+            ]
+            vertices, faces, uvs = _mesh_with_uv(tmesh, face_uv_modes=face_uv_modes)
+            chunks.extend(
+                _partition_visual_chunks(
+                    element_name,
+                    vertices=vertices,
+                    uvs=uvs,
+                    face_sides=face_sides,
+                )
+            )
+            continue
+
+        vertices, faces, uvs = _mesh_with_uv(
+            tmesh,
+            uv_mode=request_uv_modes.get((element_name, None), "repeat"),
+        )
         chunks.append(
             ObjChunk(
-                object_name=f"visual_{clean_name}",
-                material_name=clean_name,
+                object_name=f"visual_{_material_request_name(element_name, None)}",
+                material_name=_material_request_name(element_name, None),
                 element_name=element_name,
+                face_side=None,
                 vertices=vertices,
                 faces=faces,
                 uvs=uvs,
@@ -128,6 +156,7 @@ def _build_collider_chunks(geometry: MazeGeometry) -> list[ObjChunk]:
                 object_name=f"collider_{segment_index:04d}",
                 material_name="collider",
                 element_name="collider",
+                face_side=None,
                 vertices=vertices,
                 faces=faces,
                 uvs=uvs,
@@ -140,6 +169,7 @@ def _mesh_with_uv(
     mesh: trimesh.Trimesh,
     *,
     uv_mode: str = "repeat",
+    face_uv_modes: list[str] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     vertices = np.asarray(mesh.vertices, dtype=np.float64)
     faces = np.asarray(mesh.faces, dtype=np.int64)
@@ -148,9 +178,49 @@ def _mesh_with_uv(
 
     expanded_vertices = vertices[faces.reshape(-1)]
     expanded_faces = np.arange(expanded_vertices.shape[0], dtype=np.int64).reshape(-1, 3)
-    uvs = mesh_face_varying_uvs(mesh, uv_mode=uv_mode)
+    uvs = mesh_face_varying_uvs(mesh, uv_mode=uv_mode, face_uv_modes=face_uv_modes)
 
     return expanded_vertices, expanded_faces, uvs
+
+
+def _partition_visual_chunks(
+    element_name: str,
+    *,
+    vertices: np.ndarray,
+    uvs: np.ndarray,
+    face_sides: list[FaceSide | None],
+) -> list[ObjChunk]:
+    grouped_vertices: dict[FaceSide | None, list[np.ndarray]] = defaultdict(list)
+    grouped_uvs: dict[FaceSide | None, list[np.ndarray]] = defaultdict(list)
+
+    for face_index, face_side in enumerate(face_sides):
+        start = face_index * 3
+        end = start + 3
+        grouped_vertices[face_side].append(vertices[start:end])
+        grouped_uvs[face_side].append(uvs[start:end])
+
+    chunks: list[ObjChunk] = []
+    for face_side in (None, "left", "right"):
+        face_vertices = grouped_vertices.get(face_side)
+        if not face_vertices:
+            continue
+
+        chunk_vertices = np.concatenate(face_vertices, axis=0)
+        chunk_uvs = np.concatenate(grouped_uvs[face_side], axis=0)
+        chunk_faces = np.arange(len(chunk_vertices), dtype=np.int64).reshape(-1, 3)
+        material_name = _material_request_name(element_name, face_side)
+        chunks.append(
+            ObjChunk(
+                object_name=f"visual_{material_name}",
+                material_name=material_name,
+                element_name=element_name,
+                face_side=face_side,
+                vertices=chunk_vertices,
+                faces=chunk_faces,
+                uvs=chunk_uvs,
+            )
+        )
+    return chunks
 
 
 def _write_obj_file(output: Path, mtl_filename: str, chunks: list[ObjChunk]) -> None:
@@ -201,7 +271,10 @@ def _write_mtl(
 
         texture_path: str | None = None
         if material_source is not None:
-            texture_path = material_source.resolve_texture_for_obj(chunk.element_name)
+            texture_path = material_source.resolve_texture_for_obj(
+                chunk.element_name,
+                face=chunk.face_side,
+            )
 
         lines.append(f"newmtl {chunk.material_name}")
         lines.append("Ka 0.000000 0.000000 0.000000")
@@ -297,16 +370,52 @@ def _sanitize_name(name: str) -> str:
     return clean
 
 
-def _stretch_texture_elements(
+def _material_request_name(element_name: str, face: FaceSide | None) -> str:
+    if face is None:
+        return _sanitize_name(element_name)
+    return _sanitize_name(f"{element_name}_{face}")
+
+
+def _face_override_elements(
     geometry: MazeGeometry,
     material_source: MaterialSource | None,
 ) -> set[str]:
     if material_source is None:
         return set()
 
-    stretch_elements: set[str] = set()
+    face_override_elements: set[str] = set()
     for element_name in geometry.element_names:
-        texture_path = material_source.resolve_texture_for_obj(element_name)
-        if texture_path is not None and texture_name_requests_stretch(texture_path):
-            stretch_elements.add(element_name)
-    return stretch_elements
+        if material_source.has_face_override(element_name):
+            face_override_elements.add(element_name)
+    return face_override_elements
+
+
+def _material_requests(
+    geometry: MazeGeometry,
+    material_source: MaterialSource | None,
+) -> tuple[MaterialKey, ...]:
+    requests: list[MaterialKey] = []
+    for element_name in geometry.element_names:
+        requests.append((element_name, None))
+        if material_source is not None and material_source.has_face_override(element_name):
+            requests.append((element_name, "left"))
+            requests.append((element_name, "right"))
+    return tuple(requests)
+
+
+def _material_request_uv_modes(
+    material_requests: tuple[MaterialKey, ...],
+    material_source: MaterialSource | None,
+) -> dict[MaterialKey, str]:
+    uv_modes: dict[MaterialKey, str] = {}
+    for element_name, face in material_requests:
+        if material_source is None:
+            uv_modes[(element_name, face)] = "repeat"
+            continue
+        texture_path = material_source.resolve_texture_for_obj(element_name, face=face)
+        uv_modes[(element_name, face)] = (
+            "stretch"
+            if texture_path is not None and texture_name_requests_stretch(texture_path)
+            else "repeat"
+        )
+    return uv_modes

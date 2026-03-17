@@ -7,9 +7,16 @@ from dataclasses import dataclass
 
 from pxr import Sdf, UsdGeom, UsdPhysics, UsdShade
 
-from ..maze_boolean.union import boolean_union_boxes, convex_segment_boxes, trimesh_to_usd_data
+from ..maze_boolean.union import (
+    boolean_union_boxes,
+    convex_segment_boxes,
+    mesh_face_sides,
+    trimesh_to_usd_data,
+)
 from ..maze_geometry.models import WallBox
 from .mesh_primitives import box_mesh, sanitize_prim_name
+
+MaterialKey = tuple[str, str | None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,9 +25,10 @@ class MergedWallWriter:
         self,
         stage,
         walls: tuple[WallBox, ...],
-        materials: dict[str, object],
+        materials: dict[MaterialKey, object],
         *,
-        stretch_elements: set[str] | None = None,
+        face_override_elements: set[str] | None = None,
+        uv_modes: dict[MaterialKey, str] | None = None,
     ) -> None:
         if not walls:
             return
@@ -28,16 +36,18 @@ class MergedWallWriter:
             stage,
             walls,
             materials,
-            stretch_elements=stretch_elements or set(),
+            face_override_elements=face_override_elements or set(),
+            uv_modes=uv_modes or {},
         )
 
     def _write_boolean_merged(
         self,
         stage,
         walls: tuple[WallBox, ...],
-        materials: dict[str, object],
+        materials: dict[MaterialKey, object],
         *,
-        stretch_elements: set[str],
+        face_override_elements: set[str],
+        uv_modes: dict[MaterialKey, str],
     ) -> None:
         grouped: dict[str, list[tuple[tuple[float, float, float], tuple[float, float, float]]]] = defaultdict(list)
         for wall in walls:
@@ -50,23 +60,34 @@ class MergedWallWriter:
         all_uvs = []
         vertex_offset = 0
         face_offset = 0
-        material_faces: dict[str, list[int]] = defaultdict(list)
+        material_faces: dict[MaterialKey, list[int]] = defaultdict(list)
 
         for element_name, box_specs in sorted(grouped.items()):
             union_mesh = boolean_union_boxes(box_specs)
-            uv_mode = "stretch" if element_name in stretch_elements else "repeat"
-            vertices, face_counts, face_indices, uvs = trimesh_to_usd_data(
-                union_mesh,
-                uv_mode=uv_mode,
-            )
+            if element_name in face_override_elements:
+                face_sides = mesh_face_sides(union_mesh)
+                face_uv_modes = [
+                    uv_modes.get((element_name, face_side), "repeat")
+                    for face_side in face_sides
+                ]
+                vertices, face_counts, face_indices, uvs = trimesh_to_usd_data(
+                    union_mesh,
+                    face_uv_modes=face_uv_modes,
+                )
+            else:
+                face_sides = [None] * len(union_mesh.faces)
+                vertices, face_counts, face_indices, uvs = trimesh_to_usd_data(
+                    union_mesh,
+                    uv_mode=uv_modes.get((element_name, None), "repeat"),
+                )
 
             all_points.extend(vertices)
             all_face_counts.extend(face_counts)
             all_face_indices.extend(index + vertex_offset for index in face_indices)
             all_uvs.extend(uvs)
 
-            for local_face_index in range(len(face_counts)):
-                material_faces[element_name].append(face_offset + local_face_index)
+            for local_face_index, face_side in enumerate(face_sides):
+                material_faces[(element_name, face_side)].append(face_offset + local_face_index)
 
             vertex_offset += len(vertices)
             face_offset += len(face_counts)
@@ -83,14 +104,15 @@ class MergedWallWriter:
         )
         uv_attr.Set(all_uvs)
 
-        for element_name, indices in sorted(material_faces.items()):
+        for material_key, indices in sorted(material_faces.items(), key=_material_key_sort_key):
+            element_name, face_side = material_key
             subset = UsdGeom.Subset.Define(
                 stage,
-                f"/Maze/Walls/merged_walls/material_{sanitize_prim_name(element_name)}",
+                f"/Maze/Walls/merged_walls/material_{_material_request_name(element_name, face_side)}",
             )
             subset.CreateElementTypeAttr(UsdGeom.Tokens.face)
             subset.CreateIndicesAttr(indices)
-            material = materials.get(element_name)
+            material = materials.get(material_key)
             if material is not None:
                 UsdShade.MaterialBindingAPI.Apply(subset.GetPrim()).Bind(material)
 
@@ -114,3 +136,15 @@ class CompoundBoxColliderWriter:
 
             UsdGeom.Imageable(mesh).CreatePurposeAttr(UsdGeom.Tokens.guide)
             UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
+
+
+def _material_key_sort_key(value: tuple[MaterialKey, list[int]]) -> tuple[str, int]:
+    (element_name, face_side), _ = value
+    face_order = {None: 0, "left": 1, "right": 2}
+    return element_name, face_order[face_side]
+
+
+def _material_request_name(element_name: str, face_side: str | None) -> str:
+    if face_side is None:
+        return sanitize_prim_name(element_name)
+    return sanitize_prim_name(f"{element_name}_{face_side}")
