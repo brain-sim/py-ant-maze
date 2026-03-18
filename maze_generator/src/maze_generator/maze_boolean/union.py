@@ -80,7 +80,7 @@ def convex_segment_boxes(boxes: Iterable[BoxSpec], *, decimals: int = 9) -> list
     return segments
 
 
-def mesh_face_sides(mesh) -> list[FaceSide | None]:
+def mesh_face_sides(mesh, *, collapse_caps: bool = False) -> list[FaceSide | None]:
     vertices = np.asarray(mesh.vertices, dtype=np.float64)
     faces = np.asarray(mesh.faces, dtype=np.int64)
     if faces.ndim != 2 or faces.shape[1] != 3:
@@ -89,7 +89,7 @@ def mesh_face_sides(mesh) -> list[FaceSide | None]:
     face_sides: list[FaceSide | None] = []
     for face in faces:
         _, dominant_axis, dominant_sign = _face_normal_metadata(vertices, face)
-        if dominant_axis == 2:
+        if dominant_axis == 2 and not collapse_caps:
             face_sides.append(None)
             continue
         face_sides.append("right" if dominant_sign >= 0 else "left")

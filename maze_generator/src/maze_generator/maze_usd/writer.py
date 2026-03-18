@@ -84,10 +84,11 @@ def _material_requests(
 ) -> tuple[tuple[str, FaceSide | None], ...]:
     requests: list[tuple[str, FaceSide | None]] = []
     for element_name in geometry.element_names:
-        requests.append((element_name, None))
         if material_source is not None and material_source.has_face_override(element_name):
             requests.append((element_name, "left"))
             requests.append((element_name, "right"))
+            continue
+        requests.append((element_name, None))
     return tuple(requests)
 
 

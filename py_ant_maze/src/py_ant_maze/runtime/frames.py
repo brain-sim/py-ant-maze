@@ -19,7 +19,7 @@ def normalize_frame(value: str) -> str:
 
 def frame_flips_y(frame: str) -> bool:
     normalized = normalize_frame(frame)
-    return normalized in (FRAME_SIMULATION_GENESIS, FRAME_SIMULATION_ISAAC)
+    return normalized == FRAME_SIMULATION_GENESIS
 
 
 def frame_flips_x(frame: str) -> bool:

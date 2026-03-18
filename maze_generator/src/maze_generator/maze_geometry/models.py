@@ -130,7 +130,7 @@ def _to_config_frame_xyz(center: Vec3, *, bounds: Vec3, frame: str) -> Vec3:
     if normalized_frame == _FRAME_SIMULATION_GENESIS:
         return x, height - y, z
     if normalized_frame == _FRAME_SIMULATION_ISAAC:
-        return width - x, height - y, z
+        return width - x, y, z
     raise ValueError(f"Unsupported source frame: {normalized_frame!r}")
 
 
@@ -150,5 +150,5 @@ def _from_config_frame_xyz(
     if normalized_frame == _FRAME_SIMULATION_GENESIS:
         return (x_cfg, height - y_cfg, z_cfg)
     if normalized_frame == _FRAME_SIMULATION_ISAAC:
-        return (width - x_cfg, height - y_cfg, z_cfg)
+        return (width - x_cfg, y_cfg, z_cfg)
     raise ValueError(f"Unsupported target frame: {normalized_frame!r}")

@@ -76,7 +76,7 @@ Arguments:
   - fallback default => USD
 - `--frame {simulation_genesis,simulation_isaac,config}`:
   - `simulation_genesis` (default): Y-flipped map orientation
-  - `simulation_isaac`: X+Y flipped map orientation
+  - `simulation_isaac`: X-flipped map orientation
   - `config`: authored indexing/orientation
 
 Default output path when `--output` is omitted:

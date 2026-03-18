@@ -10,6 +10,28 @@ Monorepo for maze definition, editing, image conversion, and geometry export.
 | [`maze_generator`](maze_generator) | Geometry export pipeline (YAML -> USD/OBJ) with material |
 | [`maze_editor`](maze_editor) | Browser editor (React + Pyodide) for interactive authoring and visualization |
 
+## Export Preview
+
+The plan-view images below correspond directly to the simulator render previews that follow them.
+
+| Maze Layout | Wall Layout |
+| --- | --- |
+| ![Maze layout](maze_generator/media/maze_layout.png) | ![Wall layout](maze_generator/media/wall_layout.png) |
+
+`maze_layout.png` is the layout reference for the full-maze Genesis and Isaac renders. `wall_layout.png` is the wall-face reference for the front and back wall renders.
+
+| Genesis | Isaac |
+| --- | --- |
+| ![Genesis maze](maze_generator/media/genesis_maze.png) | ![Isaac maze](maze_generator/media/isaac_maze.png) |
+
+| Genesis Front View | Isaac Front View |
+| --- | --- |
+| ![Genesis wall front](maze_generator/media/genesis_wall_front.png) | ![Isaac wall front](maze_generator/media/isaac_wall_front.png) |
+
+| Genesis Back View | Isaac Back View |
+| --- | --- |
+| ![Genesis wall back](maze_generator/media/genesis_wall_back.png) | ![Isaac wall back](maze_generator/media/isaac_wall_back.png) |
+
 ## Repository Structure
 
 ```text
@@ -38,6 +60,22 @@ py-ant-maze/
 | 3D maze families (`*_3d`) | Yes | Not exported yet | Yes |
 | YAML -> image | Yes (2D occupancy/edge) | No | Yes (PNG export) |
 | USD/OBJ export | No | Yes | No |
+
+## Typical Workflow
+
+The three packages are meant to be used together:
+
+1. Author or edit a maze in YAML.
+2. Parse and validate it with `py_ant_maze`.
+3. Iterate visually in `maze_editor` if needed.
+4. Export simulator assets with `maze_generator`.
+5. Load the same maze YAML and exported geometry in downstream projects such as Genesis or Isaac.
+
+For simulator pipelines, keep the maze frame consistent across export and runtime:
+
+- `config`: authored indexing
+- `simulation_genesis`: Y-flipped simulation frame
+- `simulation_isaac`: X-flipped simulation frame
 
 ## Quick Start
 
@@ -88,7 +126,28 @@ npm install
 npm run dev
 ```
 
-Then open the Vite URL shown in the terminal (usually `http://localhost:5173`).
+The deployed editor is also available at `https://maze.yihao.one`.
+
+## Additional Package Notes
+
+`py_ant_maze` provides the core model and runtime layer:
+
+- `Maze`: immutable validated maze object
+- `MazeDraft`: mutable editing surface
+- `MazeRuntime`: semantic indexing and rectangular cell access
+- `MazeSpatialRuntime`: wall-distance and other spatial queries for supported 2D maze types
+
+`maze_generator` currently exports:
+
+- `occupancy_grid`
+- `edge_grid`
+
+Export outputs:
+
+- USD: merged wall mesh at `/Maze/Walls/merged_walls`, materials under `/Maze/Materials`, colliders under `/Maze/Colliders`
+- OBJ: `visual.obj`, `collider.obj`, material files, and copied textures in `textures/`
+
+`maze_editor` runs `py_ant_maze` inside Pyodide so browser-side parsing and mutation behavior stays aligned with the Python package.
 
 ## Maze Families
 
@@ -121,6 +180,12 @@ Then open the Vite URL shown in the terminal (usually `http://localhost:5173`).
 
 - USD export writes merged visual walls at `/Maze/Walls/merged_walls` plus separate compound box colliders at `/Maze/Colliders/*`.
 - OBJ export writes `visual.obj`, `collider.obj`, and copied textures into a bundle directory.
+
+## Package READMEs
+
+- Core API details: [`py_ant_maze/README.md`](py_ant_maze/README.md)
+- Geometry export details: [`maze_generator/README.md`](maze_generator/README.md)
+- Browser editor details: [`maze_editor/README.md`](maze_editor/README.md)
 
 ## License
 

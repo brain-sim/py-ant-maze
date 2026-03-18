@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 
-from pxr import Sdf, UsdGeom, UsdPhysics, UsdShade
+from pxr import Sdf, UsdGeom, UsdPhysics, UsdShade, Vt
 
 from ..maze_boolean.union import (
     boolean_union_boxes,
@@ -54,6 +54,7 @@ class MergedWallWriter:
             grouped[wall.element_name].append((wall.center, wall.size))
 
         mesh = UsdGeom.Mesh.Define(stage, "/Maze/Walls/merged_walls")
+        material_binding_api = UsdShade.MaterialBindingAPI.Apply(mesh.GetPrim())
         all_points = []
         all_face_counts: list[int] = []
         all_face_indices: list[int] = []
@@ -65,7 +66,7 @@ class MergedWallWriter:
         for element_name, box_specs in sorted(grouped.items()):
             union_mesh = boolean_union_boxes(box_specs)
             if element_name in face_override_elements:
-                face_sides = mesh_face_sides(union_mesh)
+                face_sides = mesh_face_sides(union_mesh, collapse_caps=True)
                 face_uv_modes = [
                     uv_modes.get((element_name, face_side), "repeat")
                     for face_side in face_sides
@@ -106,12 +107,10 @@ class MergedWallWriter:
 
         for material_key, indices in sorted(material_faces.items(), key=_material_key_sort_key):
             element_name, face_side = material_key
-            subset = UsdGeom.Subset.Define(
-                stage,
-                f"/Maze/Walls/merged_walls/material_{_material_request_name(element_name, face_side)}",
+            subset = material_binding_api.CreateMaterialBindSubset(
+                f"material_{_material_request_name(element_name, face_side)}",
+                Vt.IntArray(indices),
             )
-            subset.CreateElementTypeAttr(UsdGeom.Tokens.face)
-            subset.CreateIndicesAttr(indices)
             material = materials.get(material_key)
             if material is not None:
                 UsdShade.MaterialBindingAPI.Apply(subset.GetPrim()).Bind(material)

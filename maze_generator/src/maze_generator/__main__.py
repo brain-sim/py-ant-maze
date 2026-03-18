@@ -40,7 +40,7 @@ def main() -> None:
         help=(
             "Output coordinate frame. "
             "'simulation_genesis' flips Y from config indexing. "
-            "'simulation_isaac' flips both X and Y. "
+            "'simulation_isaac' flips X only. "
             "'config' preserves original layout indexing."
         ),
     )
